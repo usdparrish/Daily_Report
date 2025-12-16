@@ -1,0 +1,17 @@
+# pyproject.toml (Poetry example)
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^2.2"
+pyodbc = "^5.1"
+python-dotenv = "^1.0"
+jinja2 = "^3.1"
+pdfkit = "^1.0"
+matplotlib = "^3.8"
+
+# Optional but recommended
+pydantic = {version = "^2.7", optional = true}
+pydantic-settings = {version = "^2.2", optional = true}  # alternative to custom config
+
+[tool.poetry.extras]
+dev = ["black", "ruff", "pytest", "pre-commit"]

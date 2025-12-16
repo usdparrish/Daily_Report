@@ -1,0 +1,10 @@
+pandas>=2.1
+reportlab>=4.2
+typer>=0.12
+python-dotenv>=1.0
+sqlalchemy>=2.0
+pyodbc>=4.0
+requests>=2.32
+openpyxl>=3.1
+matplotlib>=3.8
+styleframe>=4.1

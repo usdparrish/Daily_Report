@@ -1,0 +1,83 @@
+# --------------------
+# PYTHON BASICS
+# --------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.log
+
+# --------------------
+# ENVIRONMENTS
+# --------------------
+env/
+venv/
+daily-env64/
+.venv/
+
+# --------------------
+# IDE / EDITORS
+# --------------------
+.vscode/
+.idea/
+*.code-workspace
+
+# --------------------
+# OS / WINDOWS
+# --------------------
+Thumbs.db
+Desktop.ini
+
+# --------------------
+# PYTHON BUILD ARTIFACTS
+# --------------------
+build/
+dist/
+*.spec
+
+# --------------------
+# DOTENV / SECRETS
+# --------------------
+.env
+.env.*
+!env.example
+
+# --------------------
+# NOTEBOOKS
+# --------------------
+*.ipynb_checkpoints/
+
+# --------------------
+# LARGE / TEMPORARY FILES
+# --------------------
+*.tmp
+*.bak
+*.swp
+*.sql
+*.rpt
+*.csv
+*.xlsx
+*.xls
+
+# Allow sample/test data if needed
+!samples/*.csv
+!samples/*.xlsx
+
+# --------------------
+# SQL / DATA EXPORTS
+# (Don’t commit live RIS/RVU extracts!)
+# --------------------
+data/
+exports/
+backups/
+archive/
+output/
+
+# --------------------
+# LOGS
+# --------------------
+logs/
+*.log

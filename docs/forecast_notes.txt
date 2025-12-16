@@ -1,0 +1,230 @@
+**NEW FORECAST USING SCHEDULED TABLE
+**WEEKDAY (1 = SUNDAY); (7=SATURDAY)
+
+***DOS ONLY NO LOCATION\MODALITY***
+SELECT s.dos,datepart(weekday,s.dos) as weekday, s.volume,s.inserted,d.sumunit,
+datediff("d",s.inserted,s.dos) as daysout,
+d.sumunit - s.volume as variance,
+(s.volume *1.0/ d.sumunit) pct
+
+FROM
+
+(select dos,sum(volume) volume, inserted from scheduled 
+WHERE (datediff("d",dos,getdate()) <=15)
+group by dos,inserted) s
+
+LEFT JOIN (
+
+SELECT ScheduleStartDate as ddos, sum(unit) sumunit
+FROM DAILY 
+WHERE (datediff("d",ScheduleStartDate,getdate()) <=15)
+  AND ProcedureCategory != 'E&M CODES' AND ProcedureCategory != 'ENHANCED SRVC'
+GROUP BY ScheduleStartDate) d
+on d.ddos = s.dos;
+---------------------------------
+**SCHEDUELD FORECAST MAM D NOT CONVERTED-ERROR**
+CREATE VIEW [SCHEDULED_FORECAST] AS
+SELECT s.dos,s.location,s.modality,
+datepart(weekday,s.dos) as weekday, s.volume as scheduled,s.inserted,
+datediff("d",s.inserted,s.dos) as daysout,
+d.sumunit as completed,
+d.sumunit - s.volume as variance,
+(s.volume *1.0/ d.sumunit) pct
+
+FROM
+
+(select dos,location,modality,sum(volume) volume, inserted from scheduled 
+WHERE (datediff("d",dos,getdate()) <=15)
+group by dos,location,modality,inserted) s
+
+LEFT JOIN (
+
+SELECT ScheduleStartDate as ddos, locationname,
+procedurecategory,sum(unit) sumunit
+FROM DAILY 
+WHERE (datediff("d",ScheduleStartDate,getdate()) <=15)
+  AND ProcedureCategory != 'E&M CODES' AND ProcedureCategory != 'ENHANCED SRVC'
+GROUP BY ScheduleStartDate,locationname,procedurecategory) d
+
+on d.ddos = s.dos and d.locationname = s.location and d.procedurecategory = s.modality
+where datediff("d",s.inserted,s.dos) <= 11;
+------------------------------------
+**USAGE**
+select * from scheduled_forecast;
+------------------------------------
+**GET MEDIAN PCT**
+CREATE FUNCTION getSch_Forecast()
+AS TABLE
+RETURN
+select location,modality,weekday,daysout,
+percentile_cont(0.5) within group(order by pct)
+over(partition by location,modality,weekday,daysout) as median
+from scheduled_forecast order by location,modality,weekday,daysout;
+------------------------------------
+CREATE FUNCTION getMedian_Convert_MAM_D(@days int)
+RETURNS TABLE
+AS
+RETURN(
+select location,modality,weekday,daysout,
+percentile_cont(0.5) within group(order by pct)
+over(partition by location,modality,weekday,daysout) as median
+from getscheduled_forecast_MAM_D(@days));
+------------------------------------
+**MEDIAN PCT GROUP BY LOCATION\MODALITY
+select location,modality,weekday,daysout,avg(median) as median 
+from getSch_Forecast_MAM_D(15)
+group by location,modality,weekday,daysout
+order by location,modality,weekday,daysout;
+------------------------------------
+**GET NEXT 10 DAYS-MAM D NOT CONVERTED**
+select dos,location,modality,weekday,daysout,scheduled
+from scheduled_forecast
+where datediff("d",getdate(),dos) between 0 and 10
+order by dos,location,modality,weekday,daysout;
+-----------------------------------
+***FORECAST MAM D NOT CONVERTED- ERRORS**
+select s.dos,s.location,s.modality,s.weekday,s.daysout,
+s.scheduled,m.median,round(s.scheduled/m.median,0) as forecast_vol
+
+FROM(
+select location,modality,weekday,daysout,avg(median) as median 
+from getSch_Forecast()
+group by location,modality,weekday,daysout) m
+
+INNER JOIN
+(
+select dos,location,modality,weekday,daysout,scheduled
+from scheduled_forecast
+where datediff("d",getdate(),dos) between 0 and 11) s
+
+ON m.location = s.location and m.modality = s.modality
+and m.weekday = s.weekday and m.daysout = s.daysout
+
+WHERE (datediff("d",getdate(),dos) = s.daysout)
+ORDER BY dos,location,modality,weekday,daysout;
+---------------------------------------
+CREATE VIEW [SCHEDULED_FORECAST_MAM_D] AS
+SELECT s.dos,s.location,s.modality,
+datepart(weekday,s.dos) as weekday, s.volume as scheduled,s.inserted,
+datediff("d",s.inserted,s.dos) as daysout,
+d2.sumunit as completed,
+d2.sumunit - s.volume as variance,
+(s.volume *1.0/ d2.sumunit) pct
+
+FROM
+
+(select dos,location,modality,sum(volume) volume, inserted from scheduled 
+WHERE (datediff("d",dos,getdate()) <=15)
+group by dos,location,modality,inserted) s
+
+LEFT JOIN (
+SELECT ddos,locationname,procedurecategory,sum(d.unit) sumunit
+FROM
+
+(SELECT ScheduleStartDate as ddos, locationname, 
+case when procedurecategory = 'MAM D' then 'MAMMOGRAPHY'
+else procedurecategory end as procedurecategory,unit
+FROM DAILY 
+WHERE (datediff("d",ScheduleStartDate,getdate()) <=15)
+  AND ProcedureCategory != 'E&M CODES' AND ProcedureCategory != 'ENHANCED SRVC')d
+
+GROUP BY ddos,locationname,procedurecategory) d2
+
+on d2.ddos = s.dos and d2.locationname = s.location and d2.procedurecategory = s.modality
+where datediff("d",s.dos,s.inserted) <= 11;
+----------------------------------------
+CREATE FUNCTION dbo.[getSCHEDULED_FORECAST_MAM_D](@days int)
+RETURNS TABLE
+AS
+RETURN(
+SELECT s.dos,s.location,s.modality,
+datepart(weekday,s.dos) as weekday, s.volume as scheduled,s.inserted,
+datediff("d",s.inserted,s.dos) as daysout,
+d2.sumunit as completed,
+d2.sumunit - s.volume as variance,
+(s.volume *1.0/ d2.sumunit) pct
+
+FROM
+
+(select dos,location,modality,sum(volume) volume, inserted from scheduled 
+WHERE (datediff("d",dos,getdate()) <=@days)
+group by dos,location,modality,inserted) s
+
+LEFT JOIN (
+SELECT ddos,locationname,procedurecategory,sum(d.unit) sumunit
+FROM
+
+(SELECT ScheduleStartDate as ddos, locationname, 
+case when procedurecategory = 'MAM D' then 'MAMMOGRAPHY'
+else procedurecategory end as procedurecategory,unit
+FROM DAILY 
+WHERE (datediff("d",ScheduleStartDate,getdate()) <=@days)
+  AND ProcedureCategory != 'E&M CODES' AND ProcedureCategory != 'ENHANCED SRVC')d
+
+GROUP BY ddos,locationname,procedurecategory) d2
+
+on d2.ddos = s.dos and d2.locationname = s.location and d2.procedurecategory = s.modality);
+----------------------------------------
+**USAGE
+SELECT * FROM getScheduled_forecast_mam_d(45);
+----------------------------------------
+***RETRO BACK CONVERT MAM D***
+select s.dos,s.location,s.modality,s.weekday,s.daysout,
+s.scheduled,m.median,round(s.scheduled/m.median,0) as forecast_vol,
+d2.completed
+
+FROM(
+select location,modality,weekday,daysout,avg(median) as median 
+from getSch_Forecast_MAM_D(15)
+group by location,modality,weekday,daysout) m
+
+INNER JOIN
+(
+select dos,location,modality,weekday,daysout,scheduled
+from getScheduled_forecast_mam_d(15)
+where dos between '2023-10-23' and '2023-10-30') s
+
+ON m.location = s.location and m.modality = s.modality
+and m.weekday = s.weekday and m.daysout = s.daysout
+
+INNER JOIN 
+(
+select dos,location,modality,sum(d.unit) as completed
+from
+(
+select schedulestartdate as dos,locationname as location,
+case when procedurecategory = 'MAM D' then 'MAMMOGRAPHY'
+else procedurecategory end as modality,unit
+from daily
+where schedulestartdate between '2023-10-23' and '2023-10-30')d
+
+group by dos,location,modality
+) d2
+
+
+ON d2.dos = s.dos and d2.location = s.location
+and d2.modality = s.modality
+
+ORDER BY dos,location,modality,weekday,daysout;
+-----------------------------------
+****FORECAST LOCATION\MODALITY CONVERT MAM D***
+select s.dos,s.location,s.modality,s.weekday,s.daysout,
+s.scheduled,m.median,round(s.scheduled/m.median,0) as forecast_vol
+
+FROM(
+select location,modality,weekday,daysout,avg(median) as median 
+from getMedian_Convert_MAM_D(15)
+group by location,modality,weekday,daysout) m
+
+INNER JOIN
+(
+select dos,location,modality,weekday,daysout,scheduled
+from getScheduled_forecast_mam_d(15)
+where datediff("d",getdate(),dos) between 0 and 11) s
+
+ON m.location = s.location and m.modality = s.modality
+and m.weekday = s.weekday and m.daysout = s.daysout
+
+WHERE (datediff("d",getdate(),dos) = s.daysout)
+ORDER BY dos,location,modality,weekday,daysout;
+---------------------------------------
