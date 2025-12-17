@@ -70,7 +70,6 @@ dist/
 # SQL / DATA EXPORTS
 # (Don’t commit live RIS/RVU extracts!)
 # --------------------
-data/
 exports/
 backups/
 archive/
