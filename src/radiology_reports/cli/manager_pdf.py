@@ -2,7 +2,8 @@ from datetime import date, timedelta
 from pathlib import Path
 import argparse
 import sys
-from radiology_reports.services.email_service import send_email
+import os
+
 from radiology_reports.reports.pdf.manager_report_runner import (
     run_manager_pdf_report,
     run_manager_combined_pdf,
@@ -24,21 +25,17 @@ def parse_args() -> argparse.Namespace:
         "--output",
         type=str,
         default="output/manager_reports",
-        help="Output directory for generated PDFs (relative to project root by default).",
+        help="Output directory for generated PDFs.",
     )
-
-    parser.add_argument(
-        "--email",
-        action="store_true",
-        help="Email the combined manager PDF (office network only).",
-    )
-
 
     parser.add_argument(
         "--combined",
         action="store_true",
         help="Generate combined (all locations) PDF.",
     )
+
+    # NOTE: email flag will be wired after this is stable
+    # parser.add_argument("--email", action="store_true")
 
     return parser.parse_args()
 
@@ -77,33 +74,6 @@ def main() -> int:
             f"Manager PDF reports generated successfully "
             f"for {target_date.isoformat()}."
         )
-        
-        combined_pdf = None
-
-if args.combined:
-    combined_pdf = run_manager_combined_pdf(
-        target_date=target_date,
-        output_root=output_root,
-    )
-
-    if args.email:
-        if not combined_pdf:
-            raise RuntimeError("--email requires --combined")
-
-        recipients = os.getenv("DEFAULT_RECIPIENTS", "")
-        if not recipients:
-            raise RuntimeError("DEFAULT_RECIPIENTS not configured.")
-
-        send_email(
-            subject=f"Manager Daily Report – {target_date.isoformat()}",
-            body=(
-                "Attached is the Manager Daily Operations Report.\n\n"
-                "This report reflects historical exam volumes vs budget."
-            ),
-            recipients=[r.strip() for r in recipients.split(",")],
-            attachments=[combined_pdf],
-        )
-        
         return 0
 
     except Exception as exc:
