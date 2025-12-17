@@ -3,6 +3,8 @@ from pathlib import Path
 import argparse
 import sys
 import os
+from radiology_reports.services.email_service import send_email
+
 
 from radiology_reports.reports.pdf.manager_report_runner import (
     run_manager_pdf_report,
@@ -34,8 +36,12 @@ def parse_args() -> argparse.Namespace:
         help="Generate combined (all locations) PDF.",
     )
 
-    # NOTE: email flag will be wired after this is stable
-    # parser.add_argument("--email", action="store_true")
+    parser.add_argument(
+        "--email",
+        action="store_true",
+        help="Email the combined manager PDF (office network only).",
+    )
+
 
     return parser.parse_args()
 
@@ -63,11 +69,31 @@ def main() -> int:
             output_root=output_root,
         )
 
-        # Optionally generate combined PDF
+        combined_pdf = None
         if args.combined:
-            run_manager_combined_pdf(
+            combined_pdf = run_manager_combined_pdf(
                 target_date=target_date,
                 output_root=output_root,
+            )
+
+        if args.email:
+            if not combined_pdf:
+                raise RuntimeError("--email requires --combined")
+
+            recipients_raw = os.getenv("DEFAULT_RECIPIENTS")
+            if not recipients_raw:
+                raise RuntimeError("DEFAULT_RECIPIENTS not set in .env")
+
+            recipients = [r.strip() for r in recipients_raw.split(",")]
+
+            send_email(
+                subject=f"Manager Daily Report – {target_date.isoformat()}",
+                body=(
+                    "Attached is the Manager Daily Operations Report.\n\n"
+                    "This report reflects historical exam volumes vs budget."
+                ),
+                recipients=recipients,
+                attachments=[combined_pdf],
             )
 
         print(
@@ -79,6 +105,7 @@ def main() -> int:
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
+
 
 
 if __name__ == "__main__":
