@@ -2,6 +2,8 @@ import smtplib
 from email.message import EmailMessage
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
 def send_email(
