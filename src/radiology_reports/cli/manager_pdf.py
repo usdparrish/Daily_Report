@@ -2,13 +2,9 @@ from datetime import date, timedelta
 from pathlib import Path
 import argparse
 import sys
-import os
-from radiology_reports.services.email_service import send_email
 
-
-from radiology_reports.reports.pdf.manager_report_runner import (
-    run_manager_pdf_report,
-    run_manager_combined_pdf,
+from radiology_reports.application.manager_daily_app import (
+    ManagerDailyReportApplication,
 )
 
 
@@ -17,31 +13,14 @@ def parse_args() -> argparse.Namespace:
         description="Generate Manager Daily PDF Reports (historical, budget vs actual)."
     )
 
-    parser.add_argument(
-        "--date",
-        type=str,
-        help="Report date in YYYY-MM-DD format (defaults to yesterday).",
-    )
-
+    parser.add_argument("--date", type=str)
     parser.add_argument(
         "--output",
         type=str,
         default="output/manager_reports",
-        help="Output directory for generated PDFs.",
     )
-
-    parser.add_argument(
-        "--combined",
-        action="store_true",
-        help="Generate combined (all locations) PDF.",
-    )
-
-    parser.add_argument(
-        "--email",
-        action="store_true",
-        help="Email the combined manager PDF (office network only).",
-    )
-
+    parser.add_argument("--combined", action="store_true")
+    parser.add_argument("--email", action="store_true")
 
     return parser.parse_args()
 
@@ -49,63 +28,28 @@ def parse_args() -> argparse.Namespace:
 def resolve_target_date(date_arg: str | None) -> date:
     if not date_arg:
         return date.today() - timedelta(days=1)
-
-    try:
-        return date.fromisoformat(date_arg)
-    except ValueError:
-        raise ValueError("Date must be in YYYY-MM-DD format.")
+    return date.fromisoformat(date_arg)
 
 
 def main() -> int:
     args = parse_args()
 
     try:
-        target_date = resolve_target_date(args.date)
-        output_root = Path(args.output)
+        app = ManagerDailyReportApplication()
 
-        # Always generate per-location PDFs
-        run_manager_pdf_report(
-            target_date=target_date,
-            output_root=output_root,
+        app.run(
+            target_date=resolve_target_date(args.date),
+            output_root=Path(args.output),
+            combined=args.combined,
+            email=args.email,
         )
 
-        combined_pdf = None
-        if args.combined:
-            combined_pdf = run_manager_combined_pdf(
-                target_date=target_date,
-                output_root=output_root,
-            )
-
-        if args.email:
-            if not combined_pdf:
-                raise RuntimeError("--email requires --combined")
-
-            recipients_raw = os.getenv("DEFAULT_RECIPIENTS")
-            if not recipients_raw:
-                raise RuntimeError("DEFAULT_RECIPIENTS not set in .env")
-
-            recipients = [r.strip() for r in recipients_raw.split(",")]
-
-            send_email(
-                subject=f"Manager Daily Report – {target_date.isoformat()}",
-                body=(
-                    "Attached is the Manager Daily Operations Report.\n\n"
-                    "This report reflects historical exam volumes vs budget."
-                ),
-                recipients=recipients,
-                attachments=[combined_pdf],
-            )
-
-        print(
-            f"Manager PDF reports generated successfully "
-            f"for {target_date.isoformat()}."
-        )
+        print("Manager PDF reports generated successfully.")
         return 0
 
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
-
 
 
 if __name__ == "__main__":

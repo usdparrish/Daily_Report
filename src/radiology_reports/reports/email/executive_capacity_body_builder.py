@@ -1,20 +1,12 @@
-# utils/email_handler.py
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from datetime import date
-
-from utils.config import SMTP_SERVER, SMTP_PORT, SENDER_EMAIL
-from utils.logger import get_logger
-
-log = get_logger(__name__)
-
-def send_executive_capacity_report(report_text: str, recipients: list) -> None:
+def build_executive_capacity_email_content(report_text: str) -> tuple[str, str]:
     """
-    Send the beautiful, executive-friendly capacity report.
-    One function. One responsibility.
+    Builds the subject and HTML body for the executive capacity report email.
+    Parses metrics from the report text and applies formatting.
+    Pure function: no I/O or side effects.
+
+    :param report_text: The plain-text report content to parse and format.
+    :return: Tuple of (subject, html_body).
     """
-    # Parse key metrics for subject & summary (with safe fallback)
     lines = report_text.splitlines()
     utilization = "N/A"
     over_count = "?"
@@ -23,19 +15,18 @@ def send_executive_capacity_report(report_text: str, recipients: list) -> None:
         util_line = next((l for l in lines if "Network Utilization" in l), None)
         over_line = next((l for l in lines if "Sites OVER capacity" in l), None)
         dos_line = next((l for l in lines if "Scheduled For:" in l), None)
-       
+        
         if util_line:
             utilization = util_line.split(":")[1].strip()
         if over_line:
             over_count = over_line.split(":")[1].strip().split()[0]
         if dos_line:
             dos = dos_line.split("Scheduled For:")[1].strip().split(" to ")[0]
-    except Exception as e:
-        log.warning(f"Failed to parse metrics: {e}")
+    except Exception:
+        pass
 
     subject = f"Capacity Alert – {over_count} Sites Over ({utilization})"
 
-    # Apply color to the full report text BEFORE injecting into HTML
     colored_report = (
         report_text
         .replace("OVER CAPACITY", '<span style="color: #e74c3c; font-weight: bold;">OVER CAPACITY</span>')
@@ -44,13 +35,12 @@ def send_executive_capacity_report(report_text: str, recipients: list) -> None:
         .replace("UNDER (GAP)", '<span style="color: #3498db; font-weight: bold;">UNDER (GAP)</span>')
     )
 
-    # Build executive HTML
     html = f"""
     <html>
     <body style="font-family: Calibri, Arial, sans-serif; line-height: 1.6; color: #333;">
       <h2 style="color: #2c3e50;">Daily Radiology Capacity Report</h2>
       <p><strong>Tomorrow ({dos}) forecast:</strong></p>
-     
+      
       <div style="background: #f8f9fa; padding: 15px; border-left: 6px solid #3498db; margin: 20px 0;">
         <p><strong>Network Utilization:</strong> <span style="font-size: 1.2em;">{utilization}</span></p>
         <p><strong>Status:</strong>
@@ -70,7 +60,6 @@ def send_executive_capacity_report(report_text: str, recipients: list) -> None:
         </tr>
     """
 
-    # Extract and add top 5
     top5_started = False
     for line in lines:
         if "Top 5 Highest Utilization Sites:" in line:
@@ -111,16 +100,4 @@ def send_executive_capacity_report(report_text: str, recipients: list) -> None:
     </html>
     """
 
-    msg = MIMEMultipart("alternative")
-    msg["From"] = SENDER_EMAIL
-    msg["To"] = ", ".join(recipients)
-    msg["Subject"] = subject
-    msg.attach(MIMEText(html, "html"))
-
-    try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.sendmail(SENDER_EMAIL, recipients, msg.as_string())
-        log.info(f"Executive report sent to: {', '.join(recipients)}")
-    except Exception as e:
-        log.error("Failed to send executive email", exc_info=True)
-        raise
+    return subject, html
