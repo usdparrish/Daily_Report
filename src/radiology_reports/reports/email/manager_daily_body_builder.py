@@ -56,7 +56,7 @@ def build_manager_daily_email_body(
 
     # Build email body
     lines = [
-        "Attached is the Daily Operations Report for Radiology Regional.",
+        "Attached is the Daily Operations Report.",
         "",
         f"Reporting Date: {report_date.strftime('%B %d, %Y')}",
         "",

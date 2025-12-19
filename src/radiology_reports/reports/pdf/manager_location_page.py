@@ -1,3 +1,5 @@
+# src/radiology_reports/reports/pdf/manager_location_page.py
+
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
@@ -13,19 +15,24 @@ from reportlab.lib.units import inch
 
 from radiology_reports.reports.models.location_report import LocationReport, Status
 from radiology_reports.reports.models.status_theme import STATUS_THEME
-
+from radiology_reports.reports.pdf.formatting import fmt_number  # Import for number formatting
 
 # -------------------------------------------------
 # Helpers
 # -------------------------------------------------
 def fmt(value):
+    """
+    Simple helper to return "N/A" for None values (existing in original code).
+    """
     return value if value is not None else "N/A"
-
 
 # -------------------------------------------------
 # BUILD ELEMENTS FOR ONE LOCATION (REUSABLE)
 # -------------------------------------------------
 def build_manager_location_elements(location: LocationReport):
+    """
+    Builds the ReportLab elements for a single location's PDF page, with formatted numbers.
+    """
     styles = getSampleStyleSheet()
     elements = []
 
@@ -40,7 +47,6 @@ def build_manager_location_elements(location: LocationReport):
             styles["Title"],
         )
     )
-
     elements.append(Spacer(1, 12))
 
     # ======================
@@ -48,7 +54,6 @@ def build_manager_location_elements(location: LocationReport):
     # ======================
     daily = location.daily
     daily_style = STATUS_THEME[daily.status]
-
     elements.append(
         Paragraph(
             f"<b>DAILY</b><br/>"
@@ -57,7 +62,6 @@ def build_manager_location_elements(location: LocationReport):
             styles["Normal"],
         )
     )
-
     elements.append(
         HRFlowable(
             width="100%",
@@ -67,38 +71,33 @@ def build_manager_location_elements(location: LocationReport):
             spaceAfter=6,
         )
     )
-
     elements.append(
         Paragraph(
-            f"Completed Exams: {daily.completed_exams}<br/>"
-            f"Budgeted Exams: {fmt(daily.budget_exams)}",
+            f"Completed Exams: {fmt_number(daily.completed_exams)}<br/>"
+            f"Budgeted Exams: {fmt(fmt_number(daily.budget_exams))}",
             styles["Normal"],
         )
     )
-
     elements.append(Spacer(1, 8))
 
     # ======================
     # DAILY TABLE
     # ======================
     daily_table = [["Modality", "Exams", "Budget", "Δ", "Status"]]
-
     for m in daily.modalities:
         daily_table.append(
             [
                 m.modality,
-                m.completed_exams,
-                fmt(m.budget_exams),
-                fmt(m.delta),
+                fmt_number(m.completed_exams),
+                fmt(fmt_number(m.budget_exams)),
+                fmt(fmt_number(m.delta)),
                 "●",
             ]
         )
-
     daily_tbl = Table(
         daily_table,
         colWidths=[2.4 * inch, 1 * inch, 1 * inch, 1 * inch, 0.6 * inch],
     )
-
     daily_style_tbl = TableStyle(
         [
             ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
@@ -108,7 +107,6 @@ def build_manager_location_elements(location: LocationReport):
             ("FONT", (0, 0), (-1, 0), "Helvetica-Bold"),
         ]
     )
-
     STATUS_COL = 4
     for row_idx, modality in enumerate(daily.modalities, start=1):
         style = STATUS_THEME[modality.status]
@@ -118,7 +116,6 @@ def build_manager_location_elements(location: LocationReport):
             (STATUS_COL, row_idx),
             style.fill_color,
         )
-
     daily_tbl.setStyle(daily_style_tbl)
     elements.append(daily_tbl)
 
@@ -127,9 +124,7 @@ def build_manager_location_elements(location: LocationReport):
     # ======================
     mtd = location.mtd
     mtd_style = STATUS_THEME[mtd.status]
-
     elements.append(Spacer(1, 16))
-
     elements.append(
         Paragraph(
             f"<b>MONTH-TO-DATE</b> (Business Days: {mtd.business_days_elapsed})<br/>"
@@ -138,7 +133,6 @@ def build_manager_location_elements(location: LocationReport):
             styles["Normal"],
         )
     )
-
     elements.append(
         HRFlowable(
             width="100%",
@@ -148,39 +142,33 @@ def build_manager_location_elements(location: LocationReport):
             spaceAfter=6,
         )
     )
-
     elements.append(
         Paragraph(
-            f"MTD Completed Exams: {mtd.completed_exams}<br/>"
-            f"MTD Budgeted Exams: {fmt(mtd.budget_exams)}",
+            f"MTD Completed Exams: {fmt_number(mtd.completed_exams)}<br/>"
+            f"MTD Budgeted Exams: {fmt(fmt_number(mtd.budget_exams))}",
             styles["Normal"],
         )
     )
-
-
     elements.append(Spacer(1, 8))
 
     # ======================
     # MTD TABLE
     # ======================
     mtd_table = [["Modality", "MTD Exams", "MTD Budget", "Δ", "Status"]]
-
     for m in mtd.modalities:
         mtd_table.append(
             [
                 m.modality,
-                m.completed_exams,
-                fmt(m.budget_exams),
-                fmt(m.delta),
+                fmt_number(m.completed_exams),
+                fmt(fmt_number(m.budget_exams)),
+                fmt(fmt_number(m.delta)),
                 "●",
             ]
         )
-
     mtd_tbl = Table(
         mtd_table,
         colWidths=[2.4 * inch, 1.2 * inch, 1.2 * inch, 1 * inch, 0.6 * inch],
     )
-
     mtd_style_tbl = TableStyle(
         [
             ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
@@ -190,7 +178,6 @@ def build_manager_location_elements(location: LocationReport):
             ("FONT", (0, 0), (-1, 0), "Helvetica-Bold"),
         ]
     )
-
     for row_idx, modality in enumerate(mtd.modalities, start=1):
         style = STATUS_THEME[modality.status]
         mtd_style_tbl.add(
@@ -199,7 +186,6 @@ def build_manager_location_elements(location: LocationReport):
             (STATUS_COL, row_idx),
             style.fill_color,
         )
-
     mtd_tbl.setStyle(mtd_style_tbl)
     elements.append(mtd_tbl)
 
@@ -207,13 +193,11 @@ def build_manager_location_elements(location: LocationReport):
     # FOOTER LEGEND (SINGLE SOURCE OF TRUTH)
     # ======================
     elements.append(Spacer(1, 14))
-
     footer_style = ParagraphStyle(
         "FooterLegend",
         fontSize=8,
         textColor=colors.grey,
     )
-
     legend = (
         "<b>Status Legend:</b> "
         f'<font color="{STATUS_THEME[Status.GREEN].legend_color}">●</font> '
@@ -228,12 +212,8 @@ def build_manager_location_elements(location: LocationReport):
         "Daily budget applies to business days only (Mon–Fri). "
         "Saturday exam volume is included; budget is not applied."
     )
-
-
     elements.append(Paragraph(legend, footer_style))
-
     return elements
-
 
 # -------------------------------------------------
 # SINGLE-LOCATION PDF WRAPPER
@@ -247,6 +227,5 @@ def build_manager_location_page(location: LocationReport, output_path: str):
         topMargin=36,
         bottomMargin=36,
     )
-
     elements = build_manager_location_elements(location)
     doc.build(elements)
