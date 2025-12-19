@@ -8,7 +8,7 @@ from radiology_reports.reports.pdf.manager_report_runner import (
     run_manager_combined_pdf,
 )
 from radiology_reports.reports.adapters.manager_location_adapter import build_manager_location_reports
-from radiology_reports.reports.manager_daily_email_body import build_manager_daily_email_body
+from radiology_reports.reports.email.manager_daily_body_builder import build_manager_daily_email_body  # Updated import path
 from radiology_reports.utils.email_sender import EmailConfig, send_email
 
 class ManagerDailyReportApplication:
@@ -49,7 +49,7 @@ class ManagerDailyReportApplication:
             if not config.default_recipients:
                 raise RuntimeError("DEFAULT_RECIPIENTS not set in .env")
 
-            recipients = [r.strip() for r in config.default_recipient.split(",")]
+            recipients = [r.strip() for r in config.default_recipients.split(",")]
 
             # Fetch reports data for body calculations
             reports = build_manager_location_reports(target_date)

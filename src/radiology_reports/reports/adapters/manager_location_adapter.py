@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 import pandas as pd
 import calendar
 
@@ -16,13 +16,11 @@ from radiology_reports.reports.models.location_report import (
     Status,
 )
 
-
 # -------------------------------------------------
 # Helpers
 # -------------------------------------------------
 def is_business_day(d: date) -> bool:
     return d.weekday() < 5
-
 
 def count_business_days(start: date, end: date) -> int:
     days = 0
@@ -30,9 +28,8 @@ def count_business_days(start: date, end: date) -> int:
     while current <= end:
         if is_business_day(current):
             days += 1
-        current = current.replace(day=current.day + 1)
+        current += timedelta(days=1)
     return days
-
 
 # -------------------------------------------------
 # Adapter
@@ -53,7 +50,9 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
     )
 
     month_start = target_date.replace(day=1)
+    month_end = date(target_date.year, target_date.month, calendar.monthrange(target_date.year, target_date.month)[1])
     business_days_elapsed = count_business_days(month_start, target_date)
+    business_days_total = count_business_days(month_start, month_end)
 
     mtd_budget_df = get_budget_mtd(
         year=target_date.year,
@@ -137,6 +136,7 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
             label="DAILY",
             is_business_day=is_business_day(target_date),
             business_days_elapsed=0,
+            business_days_total=None,
             completed_exams=daily_completed_total,
             budget_exams=daily_budget_total,
             delta=daily_delta,
@@ -204,6 +204,7 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
             label="MTD",
             is_business_day=True,
             business_days_elapsed=business_days_elapsed,
+            business_days_total=business_days_total,
             completed_exams=mtd_completed_total,
             budget_exams=mtd_budget_total,
             delta=mtd_delta,
