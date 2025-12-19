@@ -28,7 +28,12 @@ def build_manager_daily_email_body(
     # -----------------------------
     daily_completed = sum(r.daily.completed_exams for r in reports)
     daily_budget = sum(r.daily.budget_exams or 0 for r in reports)
-    daily_variance = daily_completed - daily_budget if daily_budget > 0 else None
+    daily_variance_abs = daily_completed - daily_budget if daily_budget > 0 else None
+    daily_variance_pct = (
+        daily_variance_abs / daily_budget
+        if daily_variance_abs is not None and daily_budget > 0
+        else None
+    )
 
     # -----------------------------
     # Aggregate MTD metrics
@@ -70,10 +75,21 @@ def build_manager_daily_email_body(
         "Daily Summary:",
         f"• Daily Exams Completed: {fmt_number(daily_completed)}",
         f"• Daily Budgeted Exams: {fmt_number(daily_budget)}",
-        f"• Daily Variance to Budget: {fmt_number(daily_variance)}" if daily_variance is not None else "",
-        "",
-        "Month-to-Date Summary:",
     ]
+
+    if daily_variance_abs is not None and daily_variance_pct is not None:
+        lines.append(
+            f"• Daily Variance to Budget: "
+            f"{fmt_percent(daily_variance_pct)} "
+            f"({fmt_number(daily_variance_abs)})"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Month-to-Date Summary:",
+        ]
+    )
 
     if business_days_elapsed and business_days_total:
         lines.append(
