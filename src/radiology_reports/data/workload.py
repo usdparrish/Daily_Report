@@ -295,18 +295,17 @@ def get_budget_daily_volume(year: int, month: int) -> pd.DataFrame:
     with get_connection() as conn:
         return pd.read_sql(sql, conn, params=[year, month])
 
-def get_monthly_units(month: int, year: int) -> pd.DataFrame:
-    """Fetch all units for a month/year"""
-    start = datetime(year, month, 1)
-    end = datetime(year, month, calendar.monthrange(year, month)[1])
-
+def get_units_by_range(start_date: date, end_date: date) -> pd.DataFrame:
+    """
+    Fetches exam units between a specified start and end date.
+    """
     sql = """
         SELECT ScheduleStartDate, LocationName, ProcedureCategory, Unit
         FROM DAILY
         WHERE ScheduleStartDate BETWEEN ? AND ?
     """
     with get_connection() as conn:
-        return pd.read_sql(sql, conn, params=[start, end])
+        return pd.read_sql(sql, conn, params=[start_date, end_date])
 # ===================================================================
 # END OF FILE
 # ===================================================================

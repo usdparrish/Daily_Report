@@ -7,7 +7,7 @@ import calendar
 from radiology_reports.data.workload import (
     get_data_by_date,
     get_budget_daily_volume,
-    get_monthly_units,
+    get_units_by_range,  # Updated import
     get_budget_mtd,
 )
 
@@ -27,15 +27,15 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
     # =========================
     df_daily = get_data_by_date(target_date)
 
-    df_mtd = get_monthly_units(target_date.month, target_date.year)
-
-    if is_business_day(target_date):
-        daily_budget_df = get_budget_daily_volume(target_date.year, target_date.month)
-    else:
-        # Initialize empty DF with expected columns to avoid KeyError on non-business days
-        daily_budget_df = pd.DataFrame(columns=['LocationName', 'ProcedureCategory', 'Year', 'Month', 'Unit', 'Region'])
-
     month_start = target_date.replace(day=1)
+    df_mtd = get_units_by_range(month_start, target_date)  # Updated call to fetch up to target_date only
+
+    daily_budget_df = (
+        get_budget_daily_volume(target_date.year, target_date.month)
+        if is_business_day(target_date)
+        else pd.DataFrame()
+    )
+
     month_end = date(target_date.year, target_date.month, calendar.monthrange(target_date.year, target_date.month)[1])
     business_days_elapsed = get_business_days(month_start, target_date)
     business_days_total = get_business_days(month_start, month_end)
