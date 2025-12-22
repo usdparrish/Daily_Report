@@ -24,68 +24,53 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
     """
     Builds location reports for manager PDF, aggregating daily and MTD metrics.
     """
-
     # =========================
     # LOAD DATA
     # =========================
     df_daily = get_data_by_date(target_date)
-
     month_start = target_date.replace(day=1)
     df_mtd = get_units_by_range(month_start, target_date)  # Updated to fetch data up to target_date only for accurate MTD
-
-    daily_budget_df = (
-        get_budget_daily_volume(target_date.year, target_date.month)
-        if is_business_day(target_date)
-        else pd.DataFrame()
-    )
-
+    if is_business_day(target_date):
+        daily_budget_df = get_budget_daily_volume(target_date.year, target_date.month)
+    else:
+        # Initialize empty DF with expected columns to avoid KeyError on non-business days
+        daily_budget_df = pd.DataFrame(columns=['LocationName', 'ProcedureCategory', 'Year', 'Month', 'Unit', 'Region'])
     month_end = date(target_date.year, target_date.month, calendar.monthrange(target_date.year, target_date.month)[1])
     business_days_elapsed = get_business_days(month_start, target_date)
     business_days_total = get_business_days(month_start, month_end)
-
     mtd_budget_df = get_budget_mtd(
         year=target_date.year,
         month=target_date.month,
         businessdays=business_days_elapsed,
     )
-
     locations = sorted(df_daily["LocationName"].unique())
     reports: list[LocationReport] = []
-
     # =========================
     # PER LOCATION
     # =========================
     for location in locations:
-
         # ---------- DAILY ----------
         daily_loc = df_daily[df_daily["LocationName"] == location]
         daily_budget_loc = daily_budget_df[
             daily_budget_df["LocationName"] == location
         ]
-
         completed_by_modality = (
             daily_loc.groupby("ProcedureCategory")["Unit"].sum().to_dict()
         )
         budget_by_modality = (
             daily_budget_loc.groupby("ProcedureCategory")["Unit"].sum().to_dict()
         )
-
         all_modalities = set(completed_by_modality) | set(budget_by_modality)
-
         daily_rows = []
         daily_completed_total = 0
         daily_budget_total = 0
-
         for modality in sorted(all_modalities):
             completed = int(completed_by_modality.get(modality, 0))
             budget = budget_by_modality.get(modality)
-
             # Skip truly empty
             if completed == 0 and budget is None:
                 continue
-
             daily_completed_total += completed
-
             if not is_business_day(target_date) or budget is None:
                 delta = None
                 status = Status.INFO
@@ -98,7 +83,6 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
                     else Status.YELLOW if delta >= -5
                     else Status.RED
                 )
-
             daily_rows.append(
                 ModalityMetrics(
                     modality=modality,
@@ -108,7 +92,6 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
                     status=status,
                 )
             )
-
         if not is_business_day(target_date):
             daily_status = Status.INFO
             daily_budget_total = None
@@ -120,7 +103,6 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
                 else Status.YELLOW if daily_delta >= -10
                 else Status.RED
             )
-
         daily_metrics = PeriodMetrics(
             label="DAILY",
             is_business_day=is_business_day(target_date),
@@ -132,33 +114,25 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
             status=daily_status,
             modalities=daily_rows,
         )
-
         # ---------- MTD ----------
         mtd_loc = df_mtd[df_mtd["LocationName"] == location]
         mtd_budget_loc = mtd_budget_df[mtd_budget_df["LocationName"] == location]
-
         completed_by_modality = (
             mtd_loc.groupby("ProcedureCategory")["Unit"].sum().to_dict()
         )
         budget_by_modality = (
             mtd_budget_loc.groupby("ProcedureCategory")["Unit"].sum().to_dict()
         )
-
         all_modalities = set(completed_by_modality) | set(budget_by_modality)
-
         mtd_rows = []
         mtd_completed_total = 0
         mtd_budget_total = 0
-
         for modality in sorted(all_modalities):
             completed = int(completed_by_modality.get(modality, 0))
             budget = budget_by_modality.get(modality)
-
             if completed == 0 and budget is None:
                 continue
-
             mtd_completed_total += completed
-
             if budget is None:
                 delta = None
                 status = Status.INFO
@@ -171,7 +145,6 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
                     else Status.YELLOW if delta >= -10
                     else Status.RED
                 )
-
             mtd_rows.append(
                 ModalityMetrics(
                     modality=modality,
@@ -181,14 +154,12 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
                     status=status,
                 )
             )
-
         mtd_delta = mtd_completed_total - mtd_budget_total
         mtd_status = (
             Status.GREEN if mtd_delta >= 0
             else Status.YELLOW if mtd_delta >= -25
             else Status.RED
         )
-
         mtd_metrics = PeriodMetrics(
             label="MTD",
             is_business_day=True,
@@ -200,7 +171,6 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
             status=mtd_status,
             modalities=mtd_rows,
         )
-
         # ---------- LOCATION ----------
         reports.append(
             LocationReport(
@@ -210,5 +180,4 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
                 mtd=mtd_metrics,
             )
         )
-
     return reports
