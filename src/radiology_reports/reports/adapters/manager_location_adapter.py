@@ -1,5 +1,4 @@
 # src/radiology_reports/reports/adapters/manager_location_adapter.py
-
 from datetime import date, timedelta
 import pandas as pd
 import calendar
@@ -19,6 +18,7 @@ from radiology_reports.reports.models.location_report import (
 )
 
 from radiology_reports.utils.businessdays import is_business_day, get_business_days, get_holidays
+
 
 def build_manager_location_reports(target_date: date) -> list[LocationReport]:
     """
