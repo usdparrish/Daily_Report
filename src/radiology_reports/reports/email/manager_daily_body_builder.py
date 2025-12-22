@@ -47,7 +47,7 @@ def build_manager_daily_email_body(
     # Derived metrics
     # -----------------------------
     mtd_daily_avg = (
-        round(mtd_completed / business_days_elapsed)
+        round(mtd_completed / business_days_elapsed)  # Excludes Saturdays/non-business days in divisor
         if business_days_elapsed
         else None
     )
