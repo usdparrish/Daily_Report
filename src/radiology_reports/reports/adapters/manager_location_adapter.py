@@ -7,7 +7,7 @@ import calendar
 from radiology_reports.data.workload import (
     get_data_by_date,
     get_budget_daily_volume,
-    get_units_by_range,  # Updated import
+    get_units_by_range,  # Updated import for range-based MTD data fetching
     get_budget_mtd,
 )
 
@@ -21,6 +21,9 @@ from radiology_reports.reports.models.location_report import (
 from radiology_reports.utils.businessdays import is_business_day, get_business_days, get_holidays
 
 def build_manager_location_reports(target_date: date) -> list[LocationReport]:
+    """
+    Builds location reports for manager PDF, aggregating daily and MTD metrics.
+    """
 
     # =========================
     # LOAD DATA
@@ -28,7 +31,7 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
     df_daily = get_data_by_date(target_date)
 
     month_start = target_date.replace(day=1)
-    df_mtd = get_units_by_range(month_start, target_date)  # Updated call to fetch up to target_date only
+    df_mtd = get_units_by_range(month_start, target_date)  # Updated to fetch data up to target_date only for accurate MTD
 
     daily_budget_df = (
         get_budget_daily_volume(target_date.year, target_date.month)
