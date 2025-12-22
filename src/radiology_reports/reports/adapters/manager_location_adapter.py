@@ -1,3 +1,5 @@
+# src/radiology_reports/reports/adapters/manager_location_adapter.py
+
 from datetime import date, timedelta
 import pandas as pd
 import calendar
@@ -20,15 +22,18 @@ from radiology_reports.utils.businessdays import is_business_day, get_business_d
 
 def build_manager_location_reports(target_date: date) -> list[LocationReport]:
 
+    # =========================
+    # LOAD DATA
+    # =========================
     df_daily = get_data_by_date(target_date)
 
     df_mtd = get_monthly_units(target_date.month, target_date.year)
 
-    daily_budget_df = (
-        get_budget_daily_volume(target_date.year, target_date.month)
-        if is_business_day(target_date)
-        else pd.DataFrame()
-    )
+    if is_business_day(target_date):
+        daily_budget_df = get_budget_daily_volume(target_date.year, target_date.month)
+    else:
+        # Initialize empty DF with expected columns to avoid KeyError on non-business days
+        daily_budget_df = pd.DataFrame(columns=['LocationName', 'ProcedureCategory', 'Year', 'Month', 'Unit', 'Region'])
 
     month_start = target_date.replace(day=1)
     month_end = date(target_date.year, target_date.month, calendar.monthrange(target_date.year, target_date.month)[1])
@@ -42,10 +47,14 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
     )
 
     locations = sorted(df_daily["LocationName"].unique())
-    reports = []
+    reports: list[LocationReport] = []
 
+    # =========================
+    # PER LOCATION
+    # =========================
     for location in locations:
 
+        # ---------- DAILY ----------
         daily_loc = df_daily[df_daily["LocationName"] == location]
         daily_budget_loc = daily_budget_df[
             daily_budget_df["LocationName"] == location
@@ -68,6 +77,7 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
             completed = int(completed_by_modality.get(modality, 0))
             budget = budget_by_modality.get(modality)
 
+            # Skip truly empty
             if completed == 0 and budget is None:
                 continue
 
@@ -120,6 +130,7 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
             modalities=daily_rows,
         )
 
+        # ---------- MTD ----------
         mtd_loc = df_mtd[df_mtd["LocationName"] == location]
         mtd_budget_loc = mtd_budget_df[mtd_budget_df["LocationName"] == location]
 
@@ -187,6 +198,7 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
             modalities=mtd_rows,
         )
 
+        # ---------- LOCATION ----------
         reports.append(
             LocationReport(
                 location_name=location,
