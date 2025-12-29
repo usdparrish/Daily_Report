@@ -6,6 +6,9 @@ from radiology_reports.forecasting.daily_capacity_usecase import (
 from radiology_reports.presentation.console import (
     render_daily_capacity,
 )
+from radiology_reports.presentation.email import (
+    email_daily_capacity,
+)
 
 
 def main() -> None:
@@ -27,6 +30,12 @@ def main() -> None:
         help="Optional start date (YYYY-MM-DD)",
     )
 
+    parser.add_argument(
+        "--email",
+        action="store_true",
+        help="Send results via email to default recipients",
+    )
+
     args = parser.parse_args()
 
     results = run_daily_capacity_forecast(
@@ -36,6 +45,9 @@ def main() -> None:
 
     for daily_result in results:
         render_daily_capacity(daily_result)
+
+    if args.email:
+        email_daily_capacity(results)
 
 
 if __name__ == "__main__":
