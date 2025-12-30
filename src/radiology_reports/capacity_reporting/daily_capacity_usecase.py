@@ -26,7 +26,7 @@ from radiology_reports.data.capacity import (
 )
 from radiology_reports.utils.logger import get_logger
 
-from radiology_reports.forecasting.capacity_models import (
+from radiology_reports.capacity_reporting.capacity_models import (
     DailyCapacityResult,
     LocationCapacityResult,
     ModalityCapacityResult,

@@ -1,7 +1,7 @@
 import argparse
 from datetime import date, timedelta, datetime
 
-from radiology_reports.forecasting.daily_capacity_usecase import (
+from radiology_reports.capacity_reporting.daily_capacity_usecase import (
     run_daily_capacity_report,
 )
 from radiology_reports.presentation.console import (
@@ -47,7 +47,7 @@ def main() -> None:
     render_daily_capacity(result)
 
     if args.email:
-        email_daily_capacity([result])
+        email_daily_capacity(result)
 
 
 if __name__ == "__main__":

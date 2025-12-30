@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 from typing import Iterable, List, Sequence
 
-from radiology_reports.forecasting.capacity_models import DailyCapacityResult
+from radiology_reports.capacity_reporting.capacity_models import DailyCapacityResult
 
 
 def _format_table(rows: Sequence[Sequence[object]], headers: List[str], max_rows: int | None = None) -> str:
