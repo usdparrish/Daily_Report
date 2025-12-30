@@ -130,25 +130,50 @@ def get_daily_completed_workload(dos: str | date | datetime) -> pd.DataFrame:
 
 
 def get_scheduled_snapshot(dos: str | date | datetime) -> pd.DataFrame:
-    """Morning scheduled snapshot (inserted = dos) with weights applied"""
+    """
+    Morning scheduled snapshot for a single DOS.
+    Aggregated to DOS + Location + Modality.
+    Capacity currency = governed modality weight.
+    """
+
     if isinstance(dos, (date, datetime)):
         dos = dos.strftime("%Y-%m-%d")
+
     sql = """
-        SELECT 
+        SELECT
             s.location,
             s.modality,
-            s.volume,
-            w.weight AS modality_weight,
-            CAST(s.volume * w.weight AS DECIMAL(10,2)) AS weighted_units
+
+            -- total exams scheduled
+            SUM(s.volume) AS exams,
+
+            -- governed workload units (capacity currency)
+            CAST(SUM(s.volume * w.weight) AS DECIMAL(10,2)) AS weighted_units
+
         FROM dbo.SCHEDULED s
-        JOIN dbo.v_Active_Locations a ON s.location = a.LocationName
-        LEFT JOIN dbo.Modality_Weight_Governance w 
-          ON w.modality = s.modality
-         AND s.dos BETWEEN w.effective_start AND ISNULL(w.effective_end, '9999-12-31')
-        WHERE s.inserted = s.dos AND s.dos = ?
+        JOIN dbo.v_Active_Locations a
+            ON s.location = a.LocationName
+
+        JOIN dbo.Modality_Weight_Governance w
+            ON w.modality = s.modality
+           AND s.dos BETWEEN w.effective_start
+                          AND ISNULL(w.effective_end, '9999-12-31')
+
+        WHERE s.inserted = s.dos
+          AND s.dos = ?
+
+        GROUP BY
+            s.location,
+            s.modality
+
+        ORDER BY
+            s.location,
+            s.modality;
     """
+
     with get_connection() as conn:
         return pd.read_sql(sql, conn, params=[dos])
+
 
 
 def get_location_capacity_90th() -> pd.DataFrame:
