@@ -1,7 +1,8 @@
 import argparse
+from datetime import date, timedelta, datetime
 
 from radiology_reports.forecasting.daily_capacity_usecase import (
-    run_daily_capacity_forecast,
+    run_daily_capacity_report,
 )
 from radiology_reports.presentation.console import (
     render_daily_capacity,
@@ -11,43 +12,42 @@ from radiology_reports.presentation.email import (
 )
 
 
+def _default_dos() -> date:
+    return date.today() + timedelta(days=1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Run Daily Weighted Capacity Forecast"
+        description="Daily Capacity Utilization Report (Exec)"
     )
 
     parser.add_argument(
-        "--days",
-        type=int,
-        default=1,
-        help="Number of days to run (default: 1)",
-    )
-
-    parser.add_argument(
-        "--start-date",
+        "--dos",
         type=str,
         default=None,
-        help="Optional start date (YYYY-MM-DD)",
+        help="Day of Service (YYYY-MM-DD). Defaults to tomorrow.",
     )
 
     parser.add_argument(
         "--email",
         action="store_true",
-        help="Send results via email to default recipients",
+        help="Send report via email to default recipients",
     )
 
     args = parser.parse_args()
 
-    results = run_daily_capacity_forecast(
-        start_date=args.start_date,
-        days=args.days,
+    dos = (
+        datetime.strptime(args.dos, "%Y-%m-%d").date()
+        if args.dos
+        else _default_dos()
     )
 
-    for daily_result in results:
-        render_daily_capacity(daily_result)
+    result = run_daily_capacity_report(dos)
+
+    render_daily_capacity(result)
 
     if args.email:
-        email_daily_capacity(results)
+        email_daily_capacity([result])
 
 
 if __name__ == "__main__":
