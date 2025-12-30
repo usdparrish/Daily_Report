@@ -130,11 +130,7 @@ def get_daily_completed_workload(dos: str | date | datetime) -> pd.DataFrame:
 
 
 def get_scheduled_snapshot(dos: str | date | datetime) -> pd.DataFrame:
-    """
-    Morning scheduled snapshot for a single DOS.
-    Aggregated to DOS + Location + Modality.
-    Capacity currency = governed modality weight.
-    """
+    """Morning scheduled snapshot (inserted = dos) aggregated with weights applied"""
 
     if isinstance(dos, (date, datetime)):
         dos = dos.strftime("%Y-%m-%d")
@@ -144,18 +140,21 @@ def get_scheduled_snapshot(dos: str | date | datetime) -> pd.DataFrame:
             s.location,
             s.modality,
 
-            -- total exams scheduled
-            SUM(s.volume) AS exams,
+            -- keep legacy column name
+            SUM(s.volume) AS volume,
 
-            -- governed workload units (capacity currency)
+            -- keep legacy column name (same for all rows in group)
+            MAX(w.weight) AS modality_weight,
+
+            -- correct aggregated workload
             CAST(SUM(s.volume * w.weight) AS DECIMAL(10,2)) AS weighted_units
 
         FROM dbo.SCHEDULED s
         JOIN dbo.v_Active_Locations a
             ON s.location = a.LocationName
-
         JOIN dbo.Modality_Weight_Governance w
-            ON w.modality = s.modality
+            ON UPPER(LTRIM(RTRIM(w.modality))) =
+               UPPER(LTRIM(RTRIM(s.modality)))
            AND s.dos BETWEEN w.effective_start
                           AND ISNULL(w.effective_end, '9999-12-31')
 
@@ -173,6 +172,8 @@ def get_scheduled_snapshot(dos: str | date | datetime) -> pd.DataFrame:
 
     with get_connection() as conn:
         return pd.read_sql(sql, conn, params=[dos])
+
+
 
 
 
