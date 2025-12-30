@@ -54,6 +54,16 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
     # ------------------------------------------------------------------
     df = get_scheduled_snapshot(dos)
 
+    # ------------------------------------------------------------------
+    # Snapshot metadata (NEW, metadata-only)
+    # ------------------------------------------------------------------
+    snapshot_date = None
+    if df is not None and not df.empty and "snapshot_date" in df.columns:
+        try:
+            snapshot_date = df["snapshot_date"].iloc[0]
+        except Exception:
+            snapshot_date = None
+
     if df is None or df.empty:
         logger.warning("No scheduled data found for DOS=%s", dos)
         df = pd.DataFrame(
@@ -219,4 +229,5 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
         locations=location_results_sorted,
         modalities=modality_results,
         unknown_modalities=unknown_modalities,
+        snapshot_date=snapshot_date,
     )

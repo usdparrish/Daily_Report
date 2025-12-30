@@ -51,3 +51,4 @@ class DailyCapacityResult:
     locations: List[LocationCapacityResult]          # already sorted as original output expects
     modalities: List[ModalityCapacityResult]         # detail list
     unknown_modalities: Set[str]
+    snapshot_date: Optional[date] = None

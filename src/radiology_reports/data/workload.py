@@ -139,16 +139,10 @@ def get_scheduled_snapshot(dos: str | date | datetime) -> pd.DataFrame:
         SELECT
             s.location,
             s.modality,
-
-            -- keep legacy column name
             SUM(s.volume) AS volume,
-
-            -- keep legacy column name (same for all rows in group)
             MAX(w.weight) AS modality_weight,
-
-            -- correct aggregated workload
-            CAST(SUM(s.volume * w.weight) AS DECIMAL(10,2)) AS weighted_units
-
+            CAST(SUM(s.volume * w.weight) AS DECIMAL(10,2)) AS weighted_units,
+            MAX(s.inserted) AS snapshot_date
         FROM dbo.SCHEDULED s
         JOIN dbo.v_Active_Locations a
             ON s.location = a.LocationName

@@ -25,6 +25,8 @@ def send_executive_capacity_email(
     utilization = "N/A"
     over_count = "?"
     dos = "Unknown"
+    snapshot_date = "Unknown"
+
 
     try:
         util_line = next(
@@ -36,6 +38,9 @@ def send_executive_capacity_email(
         dos_line = next(
             (l for l in lines if "Scheduled For:" in l), None
         )
+        snapshot_line = next(
+            (l for l in lines if "Schedule Snapshot As Of:" in l), None
+        )
 
         if util_line:
             utilization = util_line.split(":")[1].strip()
@@ -43,6 +48,9 @@ def send_executive_capacity_email(
             over_count = over_line.split(":")[1].strip().split()[0]
         if dos_line:
             dos = dos_line.split("Scheduled For:")[1].strip().split(" to ")[0]
+        if snapshot_line:
+            snapshot_date = snapshot_line.split("Schedule Snapshot As Of:")[1].strip()
+
 
     except Exception as e:
         log.warning(f"Failed to parse metrics for email subject: {e}")
@@ -79,7 +87,9 @@ def send_executive_capacity_email(
     <html>
     <body style="font-family: Calibri, Arial, sans-serif; line-height:1.6; color:#333;">
       <h2 style="color:#2c3e50;">Daily Radiology Capacity Report</h2>
-      <p><strong>Tomorrow ({dos}) forecast:</strong></p>
+      <p><strong>DOS ({dos}) forecast:</strong></p>
+      <p><strong>Schedule Snapshot As Of:</strong> {snapshot_date}</p>
+
 
       <div style="background:#f8f9fa;padding:15px;border-left:6px solid #3498db;margin:20px 0;">
         <p><strong>Network Utilization:</strong>

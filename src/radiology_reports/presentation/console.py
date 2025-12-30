@@ -33,7 +33,8 @@ def render_daily_capacity(result: DailyCapacityResult) -> str:
     s = result.summary
 
     out.write(f"Report Date: {s.report_date}\n")
-    out.write(f"Scheduled For: {s.start_date} to {s.end_date}\n")
+    out.write(f"Scheduled For: {s.start_date}\n")
+    out.write(f"Schedule Snapshot As Of: {result.snapshot_date}\n")
     out.write(f"Total Active Sites: {s.total_active_sites}\n\n")
 
     # ==========================================================
