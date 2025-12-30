@@ -158,8 +158,14 @@ def get_scheduled_snapshot(dos: str | date | datetime) -> pd.DataFrame:
            AND s.dos BETWEEN w.effective_start
                           AND ISNULL(w.effective_end, '9999-12-31')
 
-        WHERE s.inserted = s.dos
-          AND s.dos = ?
+        WHERE s.dos = ?
+            AND s.inserted = (
+                SELECT MAX(s2.inserted)
+                FROM dbo.SCHEDULED s2
+                WHERE s2.dos = s.dos
+                AND s2.inserted <= CAST(GETDATE() AS date)
+            )
+
 
         GROUP BY
             s.location,

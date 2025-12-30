@@ -92,52 +92,6 @@ def send_executive_capacity_email(
         </p>
       </div>
 
-      <p><strong>Top 5 Hot Spots – Action Required</strong></p>
-      <table style="width:100%;max-width:650px;border-collapse:collapse;margin:15px 0;">
-        <tr style="background:#2c3e50;color:white;">
-          <th align="left" style="padding:10px;">Site</th>
-          <th align="right" style="padding:10px;">Utilization</th>
-          <th align="right" style="padding:10px;">Weighted</th>
-          <th align="center" style="padding:10px;">Status</th>
-        </tr>
-    """
-
-    # --------------------------------------------------
-    # Extract Top 5 rows from console text (legacy)
-    # --------------------------------------------------
-    top5_started = False
-    for line in lines:
-        if "Top 5 Highest Utilization Sites:" in line:
-            top5_started = True
-            continue
-
-        if top5_started and line.strip().startswith(" • "):
-            parts = line.strip()[3:].split()
-            site = parts[0]
-            weighted = parts[1]
-            pct = parts[3].replace("(", "").replace(")", "")
-            status = " ".join(parts[5:])
-
-            color = (
-                "#e74c3c" if "OVER" in status
-                else "#27ae60" if "AT" in status
-                else "#3498db"
-            )
-
-            html += f"""
-            <tr style="background:{'#fdf2f2' if 'OVER' in status else '#f2fdf2'};">
-              <td style="padding:10px;"><strong>{site}</strong></td>
-              <td align="right" style="padding:10px;color:{color};"><strong>{pct}</strong></td>
-              <td align="right" style="padding:10px;">{weighted}</td>
-              <td align="center" style="padding:10px;color:{color};"><strong>{status}</strong></td>
-            </tr>
-            """
-        elif top5_started and line.strip() and not line.strip().startswith(" • "):
-            break
-
-    html += f"""
-      </table>
-
       <p style="color:#7f8c8d;font-size:90%;">
         <em>Full location and modality tables below for reference.</em>
       </p>

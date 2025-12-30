@@ -128,7 +128,7 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
             elif weighted >= cap * 0.95:
                 status = "AT CAPACITY"
             else:
-                status = "UNDER CAPACITY (GAP)"
+                status = "UNDER (GAP)"
 
         location_results.append(
             LocationCapacityResult(
