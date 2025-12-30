@@ -156,14 +156,14 @@ def send_executive_capacity_email(
     """
 
     msg = MIMEMultipart("alternative")
-    msg["From"] = SENDER_EMAIL
+    msg["From"] = config.SENDER_EMAIL
     msg["To"] = ", ".join(recipients)
     msg["Subject"] = subject
     msg.attach(MIMEText(html, "html"))
 
     try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.sendmail(SENDER_EMAIL, recipients, msg.as_string())
+        with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT) as server:
+            server.sendmail(config.SENDER_EMAIL, recipients, msg.as_string())
         log.info(f"Executive capacity report sent to: {', '.join(recipients)}")
     except Exception:
         log.error("Failed to send executive capacity email", exc_info=True)

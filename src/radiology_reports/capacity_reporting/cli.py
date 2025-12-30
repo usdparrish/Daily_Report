@@ -10,6 +10,7 @@ from radiology_reports.presentation.console import (
 from radiology_reports.presentation.email import (
     send_executive_capacity_email,
 )
+from radiology_reports.utils.config import config
 
 
 def _default_dos() -> date:
@@ -44,13 +45,14 @@ def main() -> None:
 
     result = run_daily_capacity_report(dos)
 
-    render_daily_capacity(result)
+    report_text = render_daily_capacity(result)
 
     if args.email:
         send_executive_capacity_email(
         report_text=report_text,
         recipients=config.DEFAULT_RECIPIENTS,
     )
+
 
 
 
