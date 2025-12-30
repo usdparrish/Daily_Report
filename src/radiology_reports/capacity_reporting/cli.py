@@ -8,7 +8,7 @@ from radiology_reports.presentation.console import (
     render_daily_capacity,
 )
 from radiology_reports.presentation.email import (
-    email_daily_capacity,
+    send_executive_capacity_email,
 )
 
 
@@ -47,7 +47,11 @@ def main() -> None:
     render_daily_capacity(result)
 
     if args.email:
-        email_daily_capacity(result)
+        send_executive_capacity_email(
+        report_text=report_text,
+        recipients=config.DEFAULT_RECIPIENTS,
+    )
+
 
 
 if __name__ == "__main__":

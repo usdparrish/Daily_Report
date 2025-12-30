@@ -6,13 +6,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Ensure logs directory exists
-LOG_DIR = Path("logs")
+# Resolve radiology_reports package root
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+
+LOG_DIR = PACKAGE_ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
 # Get config from .env (with safe defaults)
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-LOG_FILE = os.getenv("LOG_FILE", LOG_DIR / "daily_report.log")
+LOG_FILE = os.getenv("LOG_FILE", LOG_DIR / "capacity_reporting.log")
 
 # Create formatter
 formatter = logging.Formatter(
