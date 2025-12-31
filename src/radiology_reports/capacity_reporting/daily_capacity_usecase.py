@@ -6,6 +6,10 @@ Purpose:
 - Identify utilization, gaps, and risk
 - Mirrors legacy daily_capacity_forecast.py behavior
 
+Phase 2A:
+- Adds completed vs capacity (network level only)
+- Preserves exec-safe daily semantics
+
 Important:
 - NOT a forecast
 - ONE DOS per run
@@ -20,6 +24,7 @@ from typing import Dict, Tuple, Set, List
 import pandas as pd
 
 from radiology_reports.data.workload import get_scheduled_snapshot
+from radiology_reports.data.completed import get_completed_snapshot
 from radiology_reports.data.capacity import (
     get_capacity_weighted_90th_by_location,
     get_capacity_weighted_90th_by_modality,
@@ -43,30 +48,28 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
 
     logger.info("Running Daily Capacity Utilization Report | DOS=%s", dos)
 
-    # ------------------------------------------------------------------
-    # Load capacity benchmarks (same sources as legacy)
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # Load capacity benchmarks (legacy-aligned)
+    # ------------------------------------------------------------
     cap_loc: Dict[str, float] = get_capacity_weighted_90th_by_location()
     cap_mod: Dict[Tuple[str, str], float] = get_capacity_weighted_90th_by_modality()
 
-    # ------------------------------------------------------------------
-    # Load scheduled snapshot for DOS
-    # ------------------------------------------------------------------
-    df = get_scheduled_snapshot(dos)
+    # ------------------------------------------------------------
+    # Load scheduled snapshot (intent)
+    # ------------------------------------------------------------
+    df_sched = get_scheduled_snapshot(dos)
 
-    # ------------------------------------------------------------------
-    # Snapshot metadata (NEW, metadata-only)
-    # ------------------------------------------------------------------
+    # Snapshot metadata
     snapshot_date = None
-    if df is not None and not df.empty and "snapshot_date" in df.columns:
+    if df_sched is not None and not df_sched.empty and "snapshot_date" in df_sched.columns:
         try:
-            snapshot_date = df["snapshot_date"].iloc[0]
+            snapshot_date = df_sched["snapshot_date"].iloc[0]
         except Exception:
             snapshot_date = None
 
-    if df is None or df.empty:
+    if df_sched is None or df_sched.empty:
         logger.warning("No scheduled data found for DOS=%s", dos)
-        df = pd.DataFrame(
+        df_sched = pd.DataFrame(
             columns=[
                 "location",
                 "modality",
@@ -76,15 +79,14 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
             ]
         )
 
-    # ------------------------------------------------------------------
-    # Aggregation (verbatim legacy behavior)
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # Aggregate scheduled (legacy behavior)
+    # ------------------------------------------------------------
     unknown_modalities: Set[str] = set()
-
     loc_map: Dict[str, Dict[str, float]] = {}
     modality_rows: List[Tuple[str, str, int, float]] = []
 
-    for _, r in df.iterrows():
+    for _, r in df_sched.iterrows():
         loc = r["location"]
         mod = r["modality"]
 
@@ -92,7 +94,6 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
         weight = r.get("modality_weight", None)
         weighted_units = r.get("weighted_units", None)
 
-        # Legacy rule: missing weight → unknown modality → weighted = 0
         if weight is None or (isinstance(weight, float) and pd.isna(weight)):
             unknown_modalities.add(mod or "(NULL)")
             w_units = 0.0
@@ -108,18 +109,11 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
         loc_map[loc]["exams"] += volume
         loc_map[loc]["weighted"] += w_units
 
-        modality_rows.append(
-            (
-                loc,
-                mod,
-                int(volume),
-                float(w_units),
-            )
-        )
+        modality_rows.append((loc, mod, int(volume), float(w_units)))
 
-    # ------------------------------------------------------------------
-    # Build Location Rollup (same thresholds & wording)
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # Build location rollups
+    # ------------------------------------------------------------
     location_results: List[LocationCapacityResult] = []
 
     for loc, vals in loc_map.items():
@@ -132,13 +126,12 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
 
         if cap is None:
             status = "NO CAP"
+        elif weighted > cap * 1.05:
+            status = "OVER CAPACITY"
+        elif weighted >= cap * 0.95:
+            status = "AT CAPACITY"
         else:
-            if weighted > cap * 1.05:
-                status = "OVER CAPACITY"
-            elif weighted >= cap * 0.95:
-                status = "AT CAPACITY"
-            else:
-                status = "UNDER (GAP)"
+            status = "UNDER (GAP)"
 
         location_results.append(
             LocationCapacityResult(
@@ -146,23 +139,22 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
                 location=loc,
                 exams=exams,
                 weighted_units=weighted,
-                capacity_90th=cap if cap is not None else None,
+                capacity_90th=cap,
                 pct_of_capacity=pct,
                 gap_units=gap,
                 status=status,
             )
         )
 
-    # Sort exactly like legacy: by % of capacity DESC
     location_results_sorted = sorted(
         location_results,
         key=lambda r: (r.pct_of_capacity or 0.0),
         reverse=True,
     )
 
-    # ------------------------------------------------------------------
-    # Build Modality Detail (same thresholds & wording)
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # Build modality detail
+    # ------------------------------------------------------------
     modality_results: List[ModalityCapacityResult] = []
 
     for loc, mod, exams, weighted in modality_rows:
@@ -171,13 +163,12 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
 
         if capm is None:
             status = "NO CAP"
+        elif weighted > capm * 1.05:
+            status = "OVER CAPACITY"
+        elif weighted >= capm * 0.95:
+            status = "AT CAPACITY"
         else:
-            if weighted > capm * 1.05:
-                status = "OVER CAPACITY"
-            elif weighted >= capm * 0.95:
-                status = "AT CAPACITY"
-            else:
-                status = "UNDER (GAP)"
+            status = "UNDER (GAP)"
 
         modality_results.append(
             ModalityCapacityResult(
@@ -186,19 +177,19 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
                 modality=mod,
                 exams=exams,
                 weighted_units=weighted,
-                cap_mod=capm if capm is not None else None,
+                cap_mod=capm,
                 pct_of_capacity=pct,
                 status=status,
             )
         )
 
-    # ------------------------------------------------------------------
-    # Network Summary (legacy semantics)
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # Network scheduled vs capacity
+    # ------------------------------------------------------------
     total_weighted = sum(r.weighted_units for r in location_results_sorted)
     total_capacity = sum(v for v in cap_loc.values() if v is not None)
 
-    network_util_pct = (
+    scheduled_util_pct = (
         round((total_weighted / total_capacity) * 100, 1)
         if total_capacity
         else 0.0
@@ -208,6 +199,40 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
     sites_at = sum(1 for r in location_results_sorted if r.status == "AT CAPACITY")
     sites_under = len(location_results_sorted) - sites_over - sites_at
 
+    # ------------------------------------------------------------
+    # Phase 2A: completed vs capacity (network-only)
+    # ------------------------------------------------------------
+    completed_weighted = None
+    completed_util_pct = None
+    delta_weighted = None
+    delta_pct_points = None
+
+    if dos <= date.today():
+        df_completed = get_completed_snapshot(dos)
+
+        if df_completed is not None and not df_completed.empty:
+            completed_weighted = round(float(df_completed["weighted_units"].sum()), 2)
+
+            if total_capacity:
+                completed_util_pct = round(
+                    (completed_weighted / total_capacity) * 100, 1
+                )
+
+            delta_weighted = round(completed_weighted - round(total_weighted, 2), 2)
+            delta_pct_points = (
+                round(completed_util_pct - scheduled_util_pct, 1)
+                if completed_util_pct is not None
+                else None
+            )
+        else:
+            completed_weighted = 0.0
+            completed_util_pct = 0.0
+            delta_weighted = round(0.0 - round(total_weighted, 2), 2)
+            delta_pct_points = round(0.0 - scheduled_util_pct, 1)
+
+    # ------------------------------------------------------------
+    # Build network summary
+    # ------------------------------------------------------------
     summary = NetworkCapacitySummary(
         report_date=date.today(),
         start_date=dos,
@@ -215,15 +240,19 @@ def run_daily_capacity_report(dos: date) -> DailyCapacityResult:
         total_active_sites=len(location_results_sorted),
         network_scheduled_weighted=round(total_weighted, 2),
         network_capacity_90th=round(total_capacity, 2),
-        network_utilization_pct=network_util_pct,
+        network_utilization_pct=scheduled_util_pct,
         sites_over=sites_over,
         sites_at=sites_at,
         sites_under=sites_under,
+        network_completed_weighted=completed_weighted,
+        network_completed_utilization_pct=completed_util_pct,
+        execution_delta_weighted=delta_weighted,
+        execution_delta_pct_points=delta_pct_points,
     )
 
-    # ------------------------------------------------------------------
-    # Final Report Object
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # Final report object
+    # ------------------------------------------------------------
     return DailyCapacityResult(
         summary=summary,
         locations=location_results_sorted,

@@ -34,7 +34,12 @@ def render_daily_capacity(result: DailyCapacityResult) -> str:
 
     out.write(f"Report Date: {s.report_date}\n")
     out.write(f"Scheduled For: {s.start_date}\n")
-    out.write(f"Schedule Snapshot As Of: {result.snapshot_date}\n")
+
+    if result.snapshot_date:
+        out.write(f"Schedule Snapshot As Of: {result.snapshot_date}\n")
+    else:
+        out.write("Schedule Snapshot As Of: Unknown\n")
+
     out.write(f"Total Active Sites: {s.total_active_sites}\n\n")
 
     # ==========================================================
@@ -42,7 +47,28 @@ def render_daily_capacity(result: DailyCapacityResult) -> str:
     # ==========================================================
     out.write(f"Network Scheduled Weighted: {s.network_scheduled_weighted:.2f}\n")
     out.write(f"Network Capacity (90th):   {s.network_capacity_90th:.2f}\n")
-    out.write(f"Network Utilization:       {s.network_utilization_pct}%\n\n")
+    out.write(f"Network Utilization:       {s.network_utilization_pct}%\n")
+
+    # ---------------------------
+    # Phase 2A: Completed metrics
+    # ---------------------------
+    if s.network_completed_weighted is not None:
+        out.write(
+            f"Network Completed Weighted: {s.network_completed_weighted:.2f}\n"
+        )
+        out.write(
+            f"Network Completed Utilization: "
+            f"{s.network_completed_utilization_pct}%\n"
+        )
+        out.write(
+            f"Execution Delta (Completed - Scheduled): "
+            f"{s.execution_delta_weighted:+.2f} weighted "
+            f"({s.execution_delta_pct_points:+.1f} pts)\n"
+        )
+    else:
+        out.write("Network Completed Utilization: N/A (future DOS)\n")
+
+    out.write("\n")
 
     # ==========================================================
     # Capacity Status Counts
@@ -62,18 +88,21 @@ def render_daily_capacity(result: DailyCapacityResult) -> str:
         reverse=True,
     )[:5]
 
-    for r in top5:
-        pct = (
-            f"{r.pct_of_capacity * 100:.1f}%"
-            if r.pct_of_capacity is not None
-            else "N/A"
-        )
+    if not top5:
+        out.write(" • No utilization data available\n")
+    else:
+        for r in top5:
+            pct = (
+                f"{r.pct_of_capacity * 100:.1f}%"
+                if r.pct_of_capacity is not None
+                else "N/A"
+            )
 
-        out.write(
-            f" • {r.location:<12} "
-            f"{r.weighted_units:.1f} weighted "
-            f"({pct} of capacity) -> {r.status}\n"
-        )
+            out.write(
+                f" • {r.location:<12} "
+                f"{r.weighted_units:.1f} weighted "
+                f"({pct} of capacity) -> {r.status}\n"
+            )
 
     out.write("\n")
 

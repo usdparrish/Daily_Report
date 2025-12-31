@@ -87,8 +87,8 @@ def send_executive_capacity_email(
     <html>
     <body style="font-family: Calibri, Arial, sans-serif; line-height:1.6; color:#333;">
       <h2 style="color:#2c3e50;">Daily Radiology Capacity Report</h2>
-      <p><strong>DOS ({dos}) forecast:</strong></p>
-      <p><strong>Schedule Snapshot As Of:</strong> {snapshot_date}</p>
+      <p><strong>DOS ({dos}) forecast:</strong></br>
+      <strong>Schedule Snapshot As Of:</strong> {snapshot_date}</p>
 
 
       <div style="background:#f8f9fa;padding:15px;border-left:6px solid #3498db;margin:20px 0;">
