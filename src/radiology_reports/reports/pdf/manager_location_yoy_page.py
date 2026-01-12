@@ -11,7 +11,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 
-from radiology_reports.reports.models.location_report_yoy import LocationReportYoY, Status
+from radiology_reports.reports.models.location_report_yoy import LocationReportYoY
+from radiology_reports.reports.models.location_report import Status
 from radiology_reports.reports.models.status_theme import STATUS_THEME
 from radiology_reports.reports.pdf.formatting import fmt_number, fmt_percent
 
