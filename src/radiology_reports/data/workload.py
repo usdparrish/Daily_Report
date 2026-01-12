@@ -332,6 +332,20 @@ def get_units_by_range(start_date: date, end_date: date) -> pd.DataFrame:
     """
     with get_connection() as conn:
         return pd.read_sql(sql, conn, params=[start_date, end_date])
+        
+        
+        
+def budget_exists_for_month(year: int, month: int) -> bool:
+    sql = """
+        SELECT TOP 1 1
+        FROM BUDGET
+        WHERE Year = ? AND Month = ?
+    """
+    with get_connection() as conn:
+        df = pd.read_sql(sql, conn, params=[year, month])
+        return not df.empty
+
+
 # ===================================================================
 # END OF FILE
 # ===================================================================
