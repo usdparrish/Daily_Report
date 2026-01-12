@@ -1,15 +1,21 @@
 # src/radiology_reports/reports/adapters/manager_location_yoy_adapter.py
+
 from datetime import date
 import calendar
 
-from radiology_reports.data.workload import get_data_by_date, get_units_by_range
+from radiology_reports.data.workload import (
+    get_data_by_date,
+    get_units_by_range,
+    get_active_locations,   # ✅ NEW
+)
+
 from radiology_reports.utils.businessdays import is_business_day, get_business_days
 from radiology_reports.reports.models.location_report_yoy import (
     LocationReportYoY,
     PeriodMetricsYoY,
-    ModalityMetricsYoY,
     Status,
 )
+
 
 def _get_prev_date(target_date: date) -> date:
     try:
@@ -30,8 +36,10 @@ def build_manager_location_yoy_reports(target_date: date) -> list[LocationReport
     df_mtd_curr = get_units_by_range(month_start_curr, target_date)
     df_mtd_prev = get_units_by_range(month_start_prev, prev_date)
 
-    # 🔴 FIX: use MTD for location universe
-    locations = sorted(df_mtd_curr["LocationName"].unique())
+    # ✅ AUTHORITATIVE LOCATION UNIVERSE
+    locations = sorted(
+        get_active_locations()["LocationName"].tolist()
+    )
 
     month_end = date(
         target_date.year,

@@ -1,4 +1,5 @@
 # src/radiology_reports/reports/adapters/manager_location_adapter.py
+
 from datetime import date
 import pandas as pd
 import calendar
@@ -8,6 +9,7 @@ from radiology_reports.data.workload import (
     get_budget_daily_volume,
     get_units_by_range,
     get_budget_mtd,
+    get_active_locations,   # ✅ NEW
 )
 
 from radiology_reports.reports.models.location_report import (
@@ -26,8 +28,10 @@ def build_manager_location_reports(target_date: date) -> list[LocationReport]:
     month_start = target_date.replace(day=1)
     df_mtd = get_units_by_range(month_start, target_date)
 
-    # 🔴 FIX: location universe must come from MTD, not daily
-    locations = sorted(df_mtd["LocationName"].unique())
+    # ✅ AUTHORITATIVE LOCATION UNIVERSE
+    locations = sorted(
+        get_active_locations()["LocationName"].tolist()
+    )
 
     if is_business_day(target_date):
         daily_budget_df = get_budget_daily_volume(target_date.year, target_date.month)

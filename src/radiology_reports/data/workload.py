@@ -174,9 +174,6 @@ def get_scheduled_snapshot(dos: str | date | datetime) -> pd.DataFrame:
         return pd.read_sql(sql, conn, params=[dos])
 
 
-
-
-
 def get_location_capacity_90th() -> pd.DataFrame:
     """90th percentile capacity per location"""
     sql = """
