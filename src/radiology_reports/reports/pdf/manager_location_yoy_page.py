@@ -90,7 +90,7 @@ def build_manager_location_yoy_elements(location: LocationReportYoY):
             "TEXTCOLOR",
             (5, row_idx),
             (5, row_idx),
-            colors.HexColor(style.legend_color),
+            style.fill_color,
         )
 
     daily_tbl.setStyle(daily_tbl_style)
@@ -151,7 +151,7 @@ def build_manager_location_yoy_elements(location: LocationReportYoY):
             "TEXTCOLOR",
             (5, row_idx),
             (5, row_idx),
-            colors.HexColor(style.legend_color),
+            style.fill_color,
         )
 
     mtd_tbl.setStyle(mtd_tbl_style)
