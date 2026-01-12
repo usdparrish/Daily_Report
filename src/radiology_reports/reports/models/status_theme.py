@@ -1,37 +1,42 @@
+# src/radiology_reports/reports/models/status_theme.py
+
 from dataclasses import dataclass
 from reportlab.lib import colors
-from radiology_reports.reports.models.location_report import Status
 
 
 @dataclass(frozen=True)
 class StatusStyle:
-    status: Status
+    """
+    Presentation-only status styling.
+    This layer must NOT depend on domain enums.
+    """
+    status: str
     label: str
     fill_color: object      # ReportLab color
     legend_color: str       # HTML color name
 
 
 STATUS_THEME = {
-    Status.GREEN: StatusStyle(
-        status=Status.GREEN,
+    "GREEN": StatusStyle(
+        status="GREEN",
         label="Met or Exceeded Budget",
         fill_color=colors.lightgreen,
         legend_color="green",
     ),
-    Status.YELLOW: StatusStyle(
-        status=Status.YELLOW,
+    "YELLOW": StatusStyle(
+        status="YELLOW",
         label="Slightly Below Budget",
         fill_color=colors.gold,
         legend_color="gold",
     ),
-    Status.RED: StatusStyle(
-        status=Status.RED,
+    "RED": StatusStyle(
+        status="RED",
         label="Below Budget",
         fill_color=colors.lightcoral,
         legend_color="red",
     ),
-    Status.INFO: StatusStyle(
-        status=Status.INFO,
+    "INFO": StatusStyle(
+        status="INFO",
         label="Non-Business Day",
         fill_color=colors.lightblue,
         legend_color="blue",

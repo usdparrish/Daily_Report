@@ -1,10 +1,12 @@
 # src/radiology_reports/reports/pdf/manager_location_yoy_page.py
+
 from reportlab.platypus import (
     Paragraph,
     Table,
     TableStyle,
     Spacer,
-    HRFlowable
+    HRFlowable,
+    SimpleDocTemplate,
 )
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -16,11 +18,14 @@ from radiology_reports.reports.models.location_report import Status
 from radiology_reports.reports.models.status_theme import STATUS_THEME
 from radiology_reports.reports.pdf.formatting import fmt_number, fmt_percent
 
+
 def build_manager_location_yoy_elements(location: LocationReportYoY):
     styles = getSampleStyleSheet()
     elements = []
 
-    # Header
+    # ======================
+    # HEADER
+    # ======================
     elements.append(
         Paragraph(
             f"<b>Radiology Regional – Daily Operations Report (YoY)</b><br/>"
@@ -31,9 +36,12 @@ def build_manager_location_yoy_elements(location: LocationReportYoY):
     )
     elements.append(Spacer(1, 12))
 
+    # ======================
     # DAILY SUMMARY
+    # ======================
     daily = location.daily
-    daily_style = STATUS_THEME[daily.status]
+    daily_style = STATUS_THEME[daily.status.value]
+
     elements.append(
         Paragraph(
             f"<b>DAILY</b><br/>"
@@ -45,10 +53,13 @@ def build_manager_location_yoy_elements(location: LocationReportYoY):
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     elements.append(Spacer(1, 6))
 
+    # ======================
     # DAILY TABLE
+    # ======================
     daily_tbl_data = [
         ["Modality", str(location.prev_year), str(location.curr_year), "Δ Units", "Δ %", "Status"]
     ]
+
     for modality in daily.modalities:
         daily_tbl_data.append([
             modality.modality,
@@ -56,27 +67,42 @@ def build_manager_location_yoy_elements(location: LocationReportYoY):
             fmt_number(modality.completed_exams),
             fmt_number(modality.delta),
             fmt_percent(modality.pct / 100) if modality.pct is not None else "N/A",
-            "●"
+            "●",
         ])
-    daily_tbl = Table(daily_tbl_data, colWidths=[1.5*inch, 0.75*inch, 0.75*inch, 0.75*inch, 0.75*inch, 0.5*inch])
+
+    daily_tbl = Table(
+        daily_tbl_data,
+        colWidths=[1.5 * inch, 0.75 * inch, 0.75 * inch, 0.75 * inch, 0.75 * inch, 0.5 * inch],
+    )
+
     daily_tbl_style = TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("TEXTCOLOR", (0,0), (-1,0), colors.black),
-        ("ALIGN", (0,0), (-1,-1), "CENTER"),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("BOTTOMPADDING", (0,0), (-1,0), 12),
-        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
     ])
+
     for row_idx, modality in enumerate(daily.modalities, start=1):
-        style = STATUS_THEME[modality.status]
-        daily_tbl_style.add("TEXTCOLOR", (5, row_idx), (5, row_idx), colors.HexColor(style.legend_color))
+        style = STATUS_THEME[modality.status.value]
+        daily_tbl_style.add(
+            "TEXTCOLOR",
+            (5, row_idx),
+            (5, row_idx),
+            colors.HexColor(style.legend_color),
+        )
+
     daily_tbl.setStyle(daily_tbl_style)
     elements.append(daily_tbl)
     elements.append(Spacer(1, 12))
 
-    # MTD SUMMARY (similar adaptation)
+    # ======================
+    # MTD SUMMARY
+    # ======================
     mtd = location.mtd
-    mtd_style = STATUS_THEME[mtd.status]
+    mtd_style = STATUS_THEME[mtd.status.value]
+
     elements.append(
         Paragraph(
             f"<b>MTD</b><br/>"
@@ -88,10 +114,13 @@ def build_manager_location_yoy_elements(location: LocationReportYoY):
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     elements.append(Spacer(1, 6))
 
-    # MTD TABLE (adapted similarly)
+    # ======================
+    # MTD TABLE
+    # ======================
     mtd_tbl_data = [
         ["Modality", str(location.prev_year), str(location.curr_year), "Δ Units", "Δ %", "Status"]
     ]
+
     for modality in mtd.modalities:
         mtd_tbl_data.append([
             modality.modality,
@@ -99,39 +128,57 @@ def build_manager_location_yoy_elements(location: LocationReportYoY):
             fmt_number(modality.completed_exams),
             fmt_number(modality.delta),
             fmt_percent(modality.pct / 100) if modality.pct is not None else "N/A",
-            "●"
+            "●",
         ])
-    mtd_tbl = Table(mtd_tbl_data, colWidths=[1.5*inch, 0.75*inch, 0.75*inch, 0.75*inch, 0.75*inch, 0.5*inch])
+
+    mtd_tbl = Table(
+        mtd_tbl_data,
+        colWidths=[1.5 * inch, 0.75 * inch, 0.75 * inch, 0.75 * inch, 0.75 * inch, 0.5 * inch],
+    )
+
     mtd_tbl_style = TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("TEXTCOLOR", (0,0), (-1,0), colors.black),
-        ("ALIGN", (0,0), (-1,-1), "CENTER"),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("BOTTOMPADDING", (0,0), (-1,0), 12),
-        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
     ])
+
     for row_idx, modality in enumerate(mtd.modalities, start=1):
-        style = STATUS_THEME[modality.status]
-        mtd_tbl_style.add("TEXTCOLOR", (5, row_idx), (5, row_idx), colors.HexColor(style.legend_color))
+        style = STATUS_THEME[modality.status.value]
+        mtd_tbl_style.add(
+            "TEXTCOLOR",
+            (5, row_idx),
+            (5, row_idx),
+            colors.HexColor(style.legend_color),
+        )
+
     mtd_tbl.setStyle(mtd_tbl_style)
     elements.append(mtd_tbl)
 
-    # Footer Legend (adapted)
+    # ======================
+    # FOOTER LEGEND
+    # ======================
     elements.append(Spacer(1, 14))
     footer_style = ParagraphStyle("FooterLegend", fontSize=8, textColor=colors.grey)
+
     legend = (
         "<b>Status Legend:</b> "
-        f'<font color="{STATUS_THEME[Status.GREEN].legend_color}">●</font> GREEN = 5%+ Growth &nbsp;&nbsp; '
-        f'<font color="{STATUS_THEME[Status.YELLOW].legend_color}">●</font> YELLOW = Within ±5% &nbsp;&nbsp; '
-        f'<font color="{STATUS_THEME[Status.RED].legend_color}">●</font> RED = -5%+ Decline &nbsp;&nbsp; '
-        f'<font color="{STATUS_THEME[Status.INFO].legend_color}">●</font> INFO = No Prior Data<br/>'
+        f'<font color="{STATUS_THEME[Status.GREEN.value].legend_color}">●</font> GREEN = 5%+ Growth &nbsp;&nbsp; '
+        f'<font color="{STATUS_THEME[Status.YELLOW.value].legend_color}">●</font> YELLOW = Within ±5% &nbsp;&nbsp; '
+        f'<font color="{STATUS_THEME[Status.RED.value].legend_color}">●</font> RED = -5%+ Decline &nbsp;&nbsp; '
+        f'<font color="{STATUS_THEME[Status.INFO.value].legend_color}">●</font> INFO = No Prior Data<br/>'
         "Comparisons are to the same period previous year. Saturday volumes included without adjustment."
     )
+
     elements.append(Paragraph(legend, footer_style))
     return elements
 
-# Single-location PDF wrapper
-from reportlab.platypus import SimpleDocTemplate
+
+# -------------------------------------------------
+# SINGLE-LOCATION PDF WRAPPER
+# -------------------------------------------------
 def build_manager_location_yoy_page(location: LocationReportYoY, output_path: str):
     doc = SimpleDocTemplate(
         output_path,
