@@ -1,6 +1,6 @@
 # src/radiology_reports/reports/adapters/manager_location_yoy_adapter.py
 
-from datetime import date
+from datetime import date, timedelta
 import calendar
 
 from radiology_reports.data.workload import (
@@ -18,31 +18,49 @@ from radiology_reports.reports.models.location_report_yoy import (
 )
 
 
-def _get_prev_date(target_date: date) -> date:
+def _calendar_same_date_last_year(target_date: date) -> date:
+    """
+    Calendar-aligned date last year (used for MTD YoY).
+    Handles Feb 29 safely.
+    """
     try:
         return target_date.replace(year=target_date.year - 1)
     except ValueError:
-        # Feb 29 → Feb 28
         return date(target_date.year - 1, target_date.month, target_date.day - 1)
 
 
+def _same_weekday_last_year(target_date: date) -> date:
+    """
+    Operational YoY comparison.
+    Same weekday last year = 52 weeks back.
+    """
+    return target_date - timedelta(days=364)
+
+
 def build_manager_location_yoy_reports(target_date: date) -> list[LocationReportYoY]:
-    prev_date = _get_prev_date(target_date)
+    # =====================================================
+    # DATE RESOLUTION (POLICY-DRIVEN)
+    # =====================================================
+    prev_date_daily = _same_weekday_last_year(target_date)
+    prev_date_mtd = _calendar_same_date_last_year(target_date)
 
-    # Weekend flag — deterministic
-    is_weekend = target_date.weekday() >= 5
+    is_weekend = target_date.weekday() >= 5  # Saturday / Sunday
 
-    # Data pulls
+    # =====================================================
+    # DATA LOADS
+    # =====================================================
     df_daily_curr = get_data_by_date(target_date)
-    df_daily_prev = get_data_by_date(prev_date)
+    df_daily_prev = get_data_by_date(prev_date_daily)
 
     month_start_curr = target_date.replace(day=1)
-    month_start_prev = prev_date.replace(day=1)
+    month_start_prev = prev_date_mtd.replace(day=1)
 
     df_mtd_curr = get_units_by_range(month_start_curr, target_date)
-    df_mtd_prev = get_units_by_range(month_start_prev, prev_date)
+    df_mtd_prev = get_units_by_range(month_start_prev, prev_date_mtd)
 
-    # Authoritative enterprise locations
+    # =====================================================
+    # AUTHORITATIVE LOCATION UNIVERSE
+    # =====================================================
     locations = sorted(get_active_locations()["LocationName"].tolist())
 
     month_end = date(
@@ -57,9 +75,9 @@ def build_manager_location_yoy_reports(target_date: date) -> list[LocationReport
     reports: list[LocationReportYoY] = []
 
     for location in locations:
-        # =====================================================
-        # DAILY (YoY)
-        # =====================================================
+        # =================================================
+        # DAILY (YoY — SAME WEEKDAY)
+        # =================================================
         daily_curr = df_daily_curr[df_daily_curr["LocationName"] == location]
         daily_prev = df_daily_prev[df_daily_prev["LocationName"] == location]
 
@@ -77,7 +95,6 @@ def build_manager_location_yoy_reports(target_date: date) -> list[LocationReport
             daily_completed_total += completed
             daily_prev_total += prev
 
-            # Saturday/Sunday → suppress variance
             if is_weekend:
                 delta = None
                 pct = None
@@ -145,9 +162,9 @@ def build_manager_location_yoy_reports(target_date: date) -> list[LocationReport
             modalities=daily_modalities,
         )
 
-        # =====================================================
-        # MTD (YoY)
-        # =====================================================
+        # =================================================
+        # MTD (YoY — CALENDAR ALIGNED)
+        # =================================================
         mtd_curr = df_mtd_curr[df_mtd_curr["LocationName"] == location]
         mtd_prev = df_mtd_prev[df_mtd_prev["LocationName"] == location]
 
@@ -221,7 +238,7 @@ def build_manager_location_yoy_reports(target_date: date) -> list[LocationReport
             LocationReportYoY(
                 location_name=location,
                 report_date=target_date,
-                prev_year=prev_date.year,
+                prev_year=prev_date_daily.year,
                 curr_year=target_date.year,
                 daily=daily_metrics,
                 mtd=mtd_metrics,

@@ -1,0 +1,4 @@
+
+title radiology-reports
+daily-env64\scripts\activate
+python -m radiology_reports.cli.manager_pdf_yoy --date 2026-01-10 --combined
