@@ -1,4 +1,5 @@
 # src/radiology_reports/reports/pdf/manager_yoy_report_runner.py
+
 from pathlib import Path
 from datetime import date
 
@@ -8,11 +9,21 @@ from reportlab.lib.pagesizes import LETTER
 from radiology_reports.reports.adapters.manager_location_yoy_adapter import (
     build_manager_location_yoy_reports,
 )
+
 from radiology_reports.reports.pdf.manager_location_yoy_page import (
     build_manager_location_yoy_page,
     build_manager_location_yoy_elements,
 )
 
+# ✅ NEW: summary page import
+from radiology_reports.reports.pdf.manager_summary_yoy_page import (
+    build_manager_summary_yoy_page,
+)
+
+
+# -------------------------------------------------
+# ONE PDF PER LOCATION (UNCHANGED)
+# -------------------------------------------------
 def run_manager_pdf_yoy_report(
     target_date: date,
     output_root: Path | str,
@@ -29,15 +40,22 @@ def run_manager_pdf_yoy_report(
             f"{report.location_name.replace(' ', '_')}_"
             f"{target_date.isoformat()}.pdf"
         )
+
         pdf_path = output_root / filename
+
         build_manager_location_yoy_page(
             location=report,
             output_path=str(pdf_path),
         )
+
         generated.append(pdf_path)
 
     return generated
 
+
+# -------------------------------------------------
+# COMBINED PDF (ALL LOCATIONS) — WITH SUMMARY PAGE
+# -------------------------------------------------
 def run_manager_combined_yoy_pdf(
     target_date: date,
     output_root: Path | str,
@@ -62,10 +80,20 @@ def run_manager_combined_yoy_pdf(
     )
 
     elements = []
+
+    # ============================
+    # PAGE 1 — MANAGEMENT SUMMARY
+    # ============================
+    elements.extend(build_manager_summary_yoy_page(reports))
+
+    # ============================
+    # LOCATION DETAIL PAGES
+    # ============================
     for idx, report in enumerate(reports):
         elements.extend(build_manager_location_yoy_elements(report))
         if idx < len(reports) - 1:
             elements.append(PageBreak())
 
     doc.build(elements)
+
     return combined_path

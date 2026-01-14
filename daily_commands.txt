@@ -1,4 +1,13 @@
 
 title radiology-reports
 daily-env64\scripts\activate
+python -m radiology_reports.cli.manager_pdf --date 2026-01-10 --combined
 python -m radiology_reports.cli.manager_pdf_yoy --date 2026-01-10 --combined
+
+
+git add .
+git commit -m "comment"
+git push origin master
+
+git fetch origin master
+git reset --hard origin/master

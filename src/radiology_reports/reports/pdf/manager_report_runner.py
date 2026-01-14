@@ -1,3 +1,5 @@
+# src/radiology_reports/reports/pdf/manager_report_runner.py
+
 from pathlib import Path
 from datetime import date
 
@@ -7,14 +9,20 @@ from reportlab.lib.pagesizes import LETTER
 from radiology_reports.reports.adapters.manager_location_adapter import (
     build_manager_location_reports,
 )
+
 from radiology_reports.reports.pdf.manager_location_page import (
     build_manager_location_page,
     build_manager_location_elements,
 )
 
+# ✅ NEW: summary page import
+from radiology_reports.reports.pdf.manager_summary_page import (
+    build_manager_summary_page,
+)
+
 
 # -------------------------------------------------
-# ONE PDF PER LOCATION
+# ONE PDF PER LOCATION (UNCHANGED)
 # -------------------------------------------------
 def run_manager_pdf_report(
     target_date: date,
@@ -46,7 +54,7 @@ def run_manager_pdf_report(
 
 
 # -------------------------------------------------
-# COMBINED PDF (ALL LOCATIONS)
+# COMBINED PDF (ALL LOCATIONS) — WITH SUMMARY PAGE
 # -------------------------------------------------
 def run_manager_combined_pdf(
     target_date: date,
@@ -73,6 +81,14 @@ def run_manager_combined_pdf(
 
     elements = []
 
+    # ============================
+    # PAGE 1 — MANAGEMENT SUMMARY
+    # ============================
+    elements.extend(build_manager_summary_page(reports))
+
+    # ============================
+    # LOCATION DETAIL PAGES
+    # ============================
     for idx, report in enumerate(reports):
         elements.extend(build_manager_location_elements(report))
         if idx < len(reports) - 1:
