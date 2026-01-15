@@ -35,6 +35,14 @@ def main() -> None:
         help="Send report via email to default recipients",
     )
 
+    # 🔹 NEW (minimal, backward-safe)
+    parser.add_argument(
+        "--audience",
+        choices=["scheduling", "ops"],
+        default="scheduling",
+        help="Email audience (controls content depth)",
+    )
+
     args = parser.parse_args()
 
     dos = (
@@ -49,11 +57,10 @@ def main() -> None:
 
     if args.email:
         send_executive_capacity_email(
-        report_text=report_text,
-        recipients=config.DEFAULT_RECIPIENTS,
-    )
-
-
+            report_text=report_text,
+            recipients=config.DEFAULT_RECIPIENTS,
+            audience=args.audience,   # 🔹 NEW (passed through)
+        )
 
 
 if __name__ == "__main__":

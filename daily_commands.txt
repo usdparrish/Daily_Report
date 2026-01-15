@@ -1,9 +1,14 @@
 
 title radiology-reports
 daily-env64\scripts\activate
-python -m radiology_reports.cli.manager_pdf --date 2026-01-10 --combined
+python -m radiology_reports.cli.manager_pdf --date 2026-01-13 --combined --email --cleanup
 python -m radiology_reports.cli.manager_pdf_yoy --date 2026-01-10 --combined
 
+# Scheduling (unchanged)
+python -m radiology_reports.capacity_reporting.cli --dos 2026-01-12 --email
+
+# Ops (new)
+python -m radiology_reports.capacity_reporting.cli --dos 2026-01-12 --email --audience ops
 
 git add .
 git commit -m "comment"
