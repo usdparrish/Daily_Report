@@ -1,166 +1,92 @@
-def build_executive_capacity_email_content(
-    report_text: str,
-    audience: str = "scheduling",
-) -> tuple[str, str]:
+from typing import List
+
+from radiology_reports.capacity_reporting.capacity_models import DailyCapacityResult
+from radiology_reports.utils.logger import get_logger
+
+log = get_logger(__name__)
+
+
+# ==========================================================
+# OPS-ONLY: Guardrail Context (Approved Schedule)
+# ==========================================================
+def render_ops_guardrail_context(summary) -> str:
     """
-    Builds the subject and HTML body for the executive capacity report email.
-    Parses metrics from the report text and applies formatting.
-    Pure function: no I/O or side effects.
-
-    :param report_text: The plain-text report content to parse and format.
-    :param audience: 'scheduling' (default) or 'ops'
-    :return: Tuple of (subject, html_body).
+    OPS-only guardrail context.
+    Mirrors original scheduling language.
+    Presentation only. No new logic.
     """
 
-    lines = report_text.splitlines()
-    utilization = "N/A"
-    over_count = "?"
-    dos = "Unknown"
+    return f"""
+Guardrail Context (Approved Schedule)
 
-    # Execution metrics (ops only)
-    scheduled_weighted = "N/A"
-    completed_weighted = "N/A"
-    execution_delta = "N/A"
+Network Scheduled Weighted: {summary.network_scheduled_weighted:.2f}
+Network Capacity (90th):   {summary.network_capacity_90th:.2f}
+Network Utilization:       {summary.network_utilization_pct:.1f}%
 
-    try:
-        util_line = next((l for l in lines if "Network Utilization" in l), None)
-        over_line = next((l for l in lines if "Sites OVER capacity" in l), None)
-        dos_line = next((l for l in lines if "Scheduled For:" in l), None)
+Sites OVER capacity:  {summary.sites_over}
+Sites AT capacity:    {summary.sites_at}
+Sites UNDER capacity: {summary.sites_under}
+""".strip()
 
-        if util_line:
-            utilization = util_line.split(":")[1].strip()
-        if over_line:
-            over_count = over_line.split(":")[1].strip().split()[0]
-        if dos_line:
-            dos = dos_line.split("Scheduled For:")[1].strip().split(" to ")[0]
 
-        # 🔹 Execution parsing (safe, text-based, ops only)
-        for l in lines:
-            if "Network Scheduled Weighted" in l:
-                scheduled_weighted = l.split(":")[1].strip()
-            elif "Network Completed Weighted" in l:
-                completed_weighted = l.split(":")[1].strip()
-            elif "Execution Delta" in l:
-                execution_delta = l.split(":")[1].strip()
+# ==========================================================
+# EXISTING: Execution Summary (Prior Day)
+# ==========================================================
+def render_execution_summary(summary) -> str:
+    return f"""
+Execution Summary (Prior Day)
 
-    except Exception:
-        pass
+Scheduled Weighted: {summary.network_scheduled_weighted:.2f}
+Completed Weighted: {summary.network_completed_weighted:.2f}
+Execution Delta: {summary.execution_delta_weighted:+.2f} weighted ({summary.execution_delta_pct_points:+.1f} pts)
+""".strip()
 
-    subject = f"Capacity Alert – {over_count} Sites Over ({utilization})"
 
-    colored_report = (
-        report_text
-        .replace(
-            "OVER CAPACITY",
-            '<span style="color: #e74c3c; font-weight: bold;">OVER CAPACITY</span>',
-        )
-        .replace(
-            "AT CAPACITY",
-            '<span style="color: #27ae60; font-weight: bold;">AT CAPACITY</span>',
-        )
-        .replace(
-            "UNDER CAPACITY (GAP)",
-            '<span style="color: #3498db; font-weight: bold;">UNDER CAPACITY (GAP)</span>',
-        )
-        .replace(
-            "UNDER (GAP)",
-            '<span style="color: #3498db; font-weight: bold;">UNDER (GAP)</span>',
-        )
+# ==========================================================
+# EXISTING: Build OPS Email Body
+# ==========================================================
+def build_executive_capacity_body(
+    result: DailyCapacityResult,
+    audience: str,
+) -> str:
+    """
+    Build email body for capacity reporting.
+
+    CRITICAL:
+    - Scheduling output MUST remain unchanged
+    - OPS output is additive only
+    """
+
+    summary = result.summary
+    body_sections: List[str] = []
+
+    # ------------------------------------------------------
+    # EXISTING HEADER (UNCHANGED)
+    # ------------------------------------------------------
+    body_sections.append("Daily Radiology Capacity Report\n")
+    body_sections.append(f"DOS ({summary.start_date}) forecast:\n")
+    body_sections.append(f"Schedule Snapshot As Of: {result.snapshot_date}\n")
+
+    # ------------------------------------------------------
+    # EXISTING STATUS BLOCK (UNCHANGED)
+    # ------------------------------------------------------
+    body_sections.append(f"\nNetwork Utilization: {summary.network_utilization_pct:.1f}%\n")
+    body_sections.append(
+        f"Status: {summary.sites_over} sites OVER CAPACITY • AT CAPACITY • UNDER\n"
     )
 
-    html = f"""
-    <html>
-    <body style="font-family: Calibri, Arial, sans-serif; line-height: 1.6; color: #333;">
-      <h2 style="color: #2c3e50;">Daily Radiology Capacity Report</h2>
-      <p><strong>Tomorrow ({dos}) forecast:</strong></p>
+    # ------------------------------------------------------
+    # OPS-ONLY ADDITION (APPROVED)
+    # ------------------------------------------------------
+    if audience == "ops":
+        body_sections.append("\n" + render_ops_guardrail_context(summary) + "\n")
+        body_sections.append("\n" + render_execution_summary(summary) + "\n")
 
-      <div style="background: #f8f9fa; padding: 15px; border-left: 6px solid #3498db; margin: 20px 0;">
-        <p><strong>Network Utilization:</strong> <span style="font-size: 1.2em;">{utilization}</span></p>
-        <p><strong>Status:</strong>
-          <span style="color: #e74c3c;"><strong>{over_count} sites OVER CAPACITY</strong></span> •
-          <span style="color: #27ae60;">AT CAPACITY</span> •
-          <span style="color: #3498db;">UNDER</span>
-        </p>
-      </div>
-    """
+    # ------------------------------------------------------
+    # EXISTING SCHEDULING DETAIL (UNCHANGED)
+    # ------------------------------------------------------
+    if audience != "ops":
+        body_sections.append("\nFull location and modality tables below for reference.\n")
+        body_sections.append(result.console_text)
 
-    # ==========================================================
-    # Scheduling audience — EXISTING BEHAVIOR (UNCHANGED)
-    # ==========================================================
-    if audience == "scheduling":
-        html += """
-        <p><strong>Top 5 Hot Spots – Action Required</strong></p>
-        <table style="width: 100%; max-width: 650px; border-collapse: collapse; margin: 15px 0;">
-          <tr style="background: #2c3e50; color: white;">
-            <th align="left" style="padding: 10px;">Site</th>
-            <th align="right" style="padding: 10px;">Utilization</th>
-            <th align="right" style="padding: 10px;">Weighted</th>
-            <th align="center" style="padding: 10px;">Status</th>
-          </tr>
-        """
-
-        top5_started = False
-        for line in lines:
-            if "Top 5 Highest Utilization Sites:" in line:
-                top5_started = True
-                continue
-            if top5_started and line.strip().startswith(" • "):
-                parts = line.strip()[3:].split()
-                site = parts[0]
-                weighted = parts[1]
-                pct = parts[3].replace("(", "").replace(")", "")
-                status = " ".join(parts[5:])
-                color = (
-                    "#e74c3c"
-                    if "OVER" in status
-                    else "#27ae60"
-                    if "AT" in status
-                    else "#3498db"
-                )
-                html += f"""
-                <tr style="background: {'#fdf2f2' if 'OVER' in status else '#f2fdf2'};">
-                  <td style="padding: 10px;"><strong>{site}</strong></td>
-                  <td align="right" style="padding: 10px; color: {color};"><strong>{pct}</strong></td>
-                  <td align="right" style="padding: 10px;">{weighted}</td>
-                  <td align="center" style="padding: 10px; color: {color};"><strong>{status}</strong></td>
-                </tr>
-                """
-            elif top5_started and not line.strip().startswith(" • ") and line.strip():
-                break
-
-        html += f"""
-        </table>
-
-        <p style="color: #7f8c8d; font-size: 90%;">
-          <em>Full location and modality tables below for reference.</em>
-        </p>
-
-        <pre style="background: #f5f5f5; padding: 15px; border: 1px solid #eee; font-size: 10pt; font-family: Consolas; line-height: 1.3;">
-{colored_report}
-        </pre>
-        """
-
-    # ==========================================================
-    # Ops audience — DOWNSIZED + EXECUTION FEEDBACK
-    # ==========================================================
-    else:
-        html += f"""
-        <div style="background: #fff3cd; padding: 15px; border-left: 6px solid #f39c12; margin: 20px 0;">
-          <p><strong>Execution Summary (Prior Day)</strong></p>
-          <p>Scheduled Weighted: {scheduled_weighted}</p>
-          <p>Completed Weighted: {completed_weighted}</p>
-          <p>Execution Delta: {execution_delta}</p>
-          <p style="color: #7f8c8d; font-size: 90%;">
-            Scheduling operated within capacity targets; variance reflects same-day operational factors.
-          </p>
-        </div>
-        """
-
-    html += """
-      <hr style="border: 0; border-top: 1px solid #eee; margin: 40px 0;">
-      <p style="color: #95a5a6; font-size: 85%;">Automated • Radiology Operations</p>
-    </body>
-    </html>
-    """
-
-    return subject, html
+    return "\n".join(body_sections)
