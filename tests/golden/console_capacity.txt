@@ -1,0 +1,38 @@
+Using LOCAL server: DESKTOP-FLC2FFF\MSSQLSERVER01
+Using LOCAL server: DESKTOP-FLC2FFF\MSSQLSERVER01
+Using LOCAL server: DESKTOP-FLC2FFF\MSSQLSERVER01
+Using LOCAL server: DESKTOP-FLC2FFF\MSSQLSERVER01
+======================================================================
+EXECUTIVE SUMMARY - RADIOLOGY CAPACITY REPORT
+======================================================================
+
+Report Date: 2026-01-20
+Scheduled For: 2026-01-16
+Schedule Snapshot As Of: Unknown
+Total Active Sites: 0
+
+Network Scheduled Weighted: 0.00
+Network Capacity (90th):   843.53
+Network Utilization:       0.0%
+Network Completed Weighted: 0.00
+Network Completed Utilization: 0.0%
+Execution Delta (Completed - Scheduled): +0.00 weighted (+0.0 pts)
+
+Sites OVER capacity:  0
+Sites AT capacity:    0
+Sites UNDER capacity: 0
+
+Top 5 Highest Utilization Sites:
+ • No utilization data available
+
+----------------------------------------------------------------------
+FULL LOCATION CAPACITY DETAIL
+----------------------------------------------------------------------
+DOS         Location           Exams    Weighted    Capacity     %Util       Gap              Status
+
+----------------------------------------------------------------------
+FULL MODALITY CAPACITY DETAIL
+----------------------------------------------------------------------
+DOS         Location        Modality       Exams    Weighted    Capacity     %Util            Status
+
+======================================================================
