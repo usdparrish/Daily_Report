@@ -11,14 +11,17 @@ from radiology_reports.utils.logger import get_logger
 log = get_logger(__name__)
 
 
-def render_daily_capacity(result: DailyCapacityResult) -> str:
+def render_daily_capacity(
+    result: DailyCapacityResult,
+    audience: str = "scheduling",
+) -> str:
     """
     Render the Daily Capacity Utilization Report to console.
 
     CRITICAL:
-    - Output format MUST remain stable
+    - Output format MUST remain stable for scheduling
     - Email renderer parses this text verbatim
-    - This function PRINTS and RETURNS the full report text
+    - audience controls depth ONLY
     """
 
     out = StringIO()
@@ -50,7 +53,7 @@ def render_daily_capacity(result: DailyCapacityResult) -> str:
     out.write(f"Network Utilization:       {s.network_utilization_pct}%\n")
 
     # ---------------------------
-    # Phase 2A: Completed metrics
+    # Completed metrics
     # ---------------------------
     if s.network_completed_weighted is not None:
         out.write(
@@ -107,92 +110,98 @@ def render_daily_capacity(result: DailyCapacityResult) -> str:
     out.write("\n")
 
     # ==========================================================
-    # Full Location Rollup
+    # Scheduling audience ONLY — detailed sections
     # ==========================================================
-    out.write("-" * 70 + "\n")
-    out.write("FULL LOCATION CAPACITY DETAIL\n")
-    out.write("-" * 70 + "\n")
+    if audience == "scheduling":
 
-    out.write(
-        f"{'DOS':<12}"
-        f"{'Location':<16}"
-        f"{'Exams':>8}"
-        f"{'Weighted':>12}"
-        f"{'Capacity':>12}"
-        f"{'%Util':>10}"
-        f"{'Gap':>10}"
-        f"{'Status':>20}\n"
-    )
-
-    for r in result.locations:
-        pct = (
-            f"{r.pct_of_capacity * 100:.1f}%"
-            if r.pct_of_capacity is not None
-            else "N/A"
-        )
-        gap = f"{r.gap_units:.1f}" if r.gap_units is not None else "N/A"
-        cap = f"{r.capacity_90th:.1f}" if r.capacity_90th is not None else "N/A"
+        # --------------------------
+        # Full Location Rollup
+        # --------------------------
+        out.write("-" * 70 + "\n")
+        out.write("FULL LOCATION CAPACITY DETAIL\n")
+        out.write("-" * 70 + "\n")
 
         out.write(
-            f"{r.dos:%Y-%m-%d}  "
-            f"{r.location:<16}"
-            f"{r.exams:>8}"
-            f"{r.weighted_units:>12.1f}"
-            f"{cap:>12}"
-            f"{pct:>10}"
-            f"{gap:>10}"
-            f"{r.status:>20}\n"
+            f"{'DOS':<12}"
+            f"{'Location':<16}"
+            f"{'Exams':>8}"
+            f"{'Weighted':>12}"
+            f"{'Capacity':>12}"
+            f"{'%Util':>10}"
+            f"{'Gap':>10}"
+            f"{'Status':>20}\n"
         )
 
-    out.write("\n")
+        for r in result.locations:
+            pct = (
+                f"{r.pct_of_capacity * 100:.1f}%"
+                if r.pct_of_capacity is not None
+                else "N/A"
+            )
+            gap = f"{r.gap_units:.1f}" if r.gap_units is not None else "N/A"
+            cap = f"{r.capacity_90th:.1f}" if r.capacity_90th is not None else "N/A"
 
-    # ==========================================================
-    # Full Modality Detail
-    # ==========================================================
-    out.write("-" * 70 + "\n")
-    out.write("FULL MODALITY CAPACITY DETAIL\n")
-    out.write("-" * 70 + "\n")
+            out.write(
+                f"{r.dos:%Y-%m-%d}  "
+                f"{r.location:<16}"
+                f"{r.exams:>8}"
+                f"{r.weighted_units:>12.1f}"
+                f"{cap:>12}"
+                f"{pct:>10}"
+                f"{gap:>10}"
+                f"{r.status:>20}\n"
+            )
 
-    out.write(
-        f"{'DOS':<12}"
-        f"{'Location':<16}"
-        f"{'Modality':<12}"
-        f"{'Exams':>8}"
-        f"{'Weighted':>12}"
-        f"{'Capacity':>12}"
-        f"{'%Util':>10}"
-        f"{'Status':>18}\n"
-    )
-
-    for r in result.modalities:
-        pct = (
-            f"{r.pct_of_capacity * 100:.1f}%"
-            if r.pct_of_capacity is not None
-            else "N/A"
-        )
-        cap = f"{r.cap_mod:.1f}" if r.cap_mod is not None else "N/A"
-
-        out.write(
-            f"{r.dos:%Y-%m-%d}  "
-            f"{r.location:<16}"
-            f"{r.modality:<12}"
-            f"{r.exams:>8}"
-            f"{r.weighted_units:>12.1f}"
-            f"{cap:>12}"
-            f"{pct:>10}"
-            f"{r.status:>18}\n"
-        )
-
-    # ==========================================================
-    # Unknown Modality Warning
-    # ==========================================================
-    if result.unknown_modalities:
         out.write("\n")
-        out.write("WARNING: Unknown modalities detected (missing weights):\n")
-        for m in sorted(result.unknown_modalities):
-            out.write(f" - {m}\n")
 
-    out.write("\n")
+        # --------------------------
+        # Full Modality Detail
+        # --------------------------
+        out.write("-" * 70 + "\n")
+        out.write("FULL MODALITY CAPACITY DETAIL\n")
+        out.write("-" * 70 + "\n")
+
+        out.write(
+            f"{'DOS':<12}"
+            f"{'Location':<16}"
+            f"{'Modality':<12}"
+            f"{'Exams':>8}"
+            f"{'Weighted':>12}"
+            f"{'Capacity':>12}"
+            f"{'%Util':>10}"
+            f"{'Status':>18}\n"
+        )
+
+        for r in result.modalities:
+            pct = (
+                f"{r.pct_of_capacity * 100:.1f}%"
+                if r.pct_of_capacity is not None
+                else "N/A"
+            )
+            cap = f"{r.cap_mod:.1f}" if r.cap_mod is not None else "N/A"
+
+            out.write(
+                f"{r.dos:%Y-%m-%d}  "
+                f"{r.location:<16}"
+                f"{r.modality:<12}"
+                f"{r.exams:>8}"
+                f"{r.weighted_units:>12.1f}"
+                f"{cap:>12}"
+                f"{pct:>10}"
+                f"{r.status:>18}\n"
+            )
+
+        # --------------------------
+        # Unknown Modality Warning
+        # --------------------------
+        if result.unknown_modalities:
+            out.write("\n")
+            out.write("WARNING: Unknown modalities detected (missing weights):\n")
+            for m in sorted(result.unknown_modalities):
+                out.write(f" - {m}\n")
+
+        out.write("\n")
+
     out.write("=" * 70 + "\n")
 
     report_text = out.getvalue()

@@ -1,0 +1,27 @@
+Using LOCAL server: DESKTOP-FLC2FFF\MSSQLSERVER01
+Using LOCAL server: DESKTOP-FLC2FFF\MSSQLSERVER01
+Using LOCAL server: DESKTOP-FLC2FFF\MSSQLSERVER01
+Using LOCAL server: DESKTOP-FLC2FFF\MSSQLSERVER01
+======================================================================
+DAILY RADIOLOGY CAPACITY – OPS (EXECUTION)
+======================================================================
+
+Report Date: 2026-01-22
+DOS: 2026-01-16
+Schedule Snapshot As Of: Unknown
+Total Active Sites: 0
+
+--- SCHEDULED (PLAN) ---
+Network Scheduled Weighted: 0.00
+Network Capacity (90th):   849.52
+Scheduled Utilization:     0.0%
+Sites OVER / AT / UNDER:   0 / 0 / 0
+
+--- COMPLETED (ACTUAL) ---
+Network Completed Weighted: 0.00
+Completed Utilization:      0.0%
+
+--- EXECUTION DELTA ---
+Completed - Scheduled: 0.00 weighted (0.0 pts)
+
+Automated • Radiology Operations
