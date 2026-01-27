@@ -1,66 +1,46 @@
-from __future__ import annotations
+# src/radiology_reports/capacity_reporting/ops/cli.py
 
 import argparse
-import os
-from datetime import date, datetime
+from datetime import date
 
 from radiology_reports.capacity_reporting.ops.ops_daily_capacity_usecase import (
     build_ops_daily_capacity,
 )
-from radiology_reports.capacity_reporting.ops.ops_email_presenter import (
-    render_ops_email,
-    send_ops_capacity_email,
-    _parse_recipients,
-)
+from radiology_reports.utils.config import config
+from radiology_reports.presentation.ops_email import send_ops_capacity_email
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Daily Radiology Capacity – OPS (Execution)"
+        description="OPS Daily Radiology Capacity Execution Report"
     )
-
     parser.add_argument(
         "--dos",
-        type=str,
         required=True,
-        help="Day of Service (YYYY-MM-DD). Required for OPS execution reporting.",
+        help="Date of Service (YYYY-MM-DD)",
     )
-
     parser.add_argument(
         "--email",
         action="store_true",
-        help="Send OPS execution email (requires recipients).",
-    )
-
-    parser.add_argument(
-        "--to",
-        type=str,
-        default=None,
-        help="Comma-separated recipients for OPS email. If omitted, uses OPS_RECIPIENTS env var.",
+        help="Send OPS execution email",
     )
 
     args = parser.parse_args()
-    dos = datetime.strptime(args.dos, "%Y-%m-%d").date()
 
-    ops_result = build_ops_daily_capacity(dos)
-    body = render_ops_email(ops_result)
+    # Normalize CLI input at the boundary (NOT a hack)
+    dos = date.fromisoformat(args.dos)
 
-    # Always print (useful for runs + golden capture)
+    # Build OPS execution report (domain use case)
+    body = build_ops_daily_capacity(dos=dos)
+
+    # Always print (OPS requirement)
     print(body)
 
+    # Optional email
     if args.email:
-        to_value = args.to or os.getenv("OPS_RECIPIENTS", "").strip()
-        recipients = _parse_recipients(to_value)
-
-        if not recipients:
-            raise ValueError(
-                "OPS recipients not provided. Supply --to or set OPS_RECIPIENTS in environment."
-            )
-
         send_ops_capacity_email(
-            body_text=body,
-            recipients=recipients,
-            subject="Daily Radiology Capacity – OPS (Execution)",
+            report_text=body,
+            recipients=config.OPS_RECIPIENTS,
         )
 
 

@@ -29,6 +29,13 @@ class Config:
         e.strip() for e in os.getenv("DEFAULT_RECIPIENTS", "dparrish@radiologyregional.com").split(",")
         if e.strip()
     ]
+    
+    # NEW — OPS-only recipients
+    OPS_RECIPIENTS = [
+        e.strip()
+        for e in os.getenv("OPS_RECIPIENTS", "").split(",")
+        if e.strip()
+    ]
 
     def _can_connect_to(self, server: str, timeout: float = 1.5) -> bool:
         """Fast TCP check on port 1433 (SQL Server default)"""

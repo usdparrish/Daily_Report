@@ -11,7 +11,7 @@ from radiology_reports.reports.pdf.formatting import fmt_number, fmt_percent
 
 
 # -------------------------------------------------
-# YoY-specific status labels (DO NOT use budget text)
+# YoY-specific status labels (do NOT use budget text)
 # -------------------------------------------------
 YOY_STATUS_LABELS = {
     Status.GREEN: "5%+ Growth",
@@ -23,8 +23,8 @@ YOY_STATUS_LABELS = {
 
 def build_manager_summary_yoy_page(reports):
     """
-    Builds the Page 1 management summary for the YoY report.
-    Presentation-layer only. No business logic.
+    Page 1 management summary for YoY report.
+    Presentation-layer only.
     """
 
     styles = getSampleStyleSheet()
@@ -33,7 +33,7 @@ def build_manager_summary_yoy_page(reports):
     report_date = reports[0].report_date
 
     # ======================
-    # HEADER (MATCH LOCATION PAGE VERBATIM)
+    # HEADER (MATCH LOCATION PAGE)
     # ======================
     elements.append(
         Paragraph(
@@ -105,7 +105,7 @@ def build_manager_summary_yoy_page(reports):
     elements.append(Spacer(1, 16))
 
     # ======================
-    # LOCATION MTD SUMMARY TABLE
+    # LOCATION MTD SUMMARY TABLE (UNCHANGED)
     # ======================
     data = [["Location", "MTD Exams", "MTD Prev", "Δ", "Δ %", "Status"]]
 
@@ -123,7 +123,14 @@ def build_manager_summary_yoy_page(reports):
 
     tbl = Table(
         data,
-        colWidths=[2.4 * inch, 1.2 * inch, 1.2 * inch, 1.1 * inch, 1.1 * inch, 0.6 * inch],
+        colWidths=[
+            2.4 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.1 * inch,
+            1.1 * inch,
+            0.6 * inch,
+        ],
         repeatRows=1,
     )
 
@@ -148,9 +155,106 @@ def build_manager_summary_yoy_page(reports):
 
     tbl.setStyle(tbl_style)
     elements.append(tbl)
+    elements.append(Spacer(1, 16))
 
     # ======================
-    # FOOTER LEGEND (MATCH LOCATION PAGE VERBATIM)
+    # ENTERPRISE MTD YOY BY MODALITY
+    # (Aggregated from existing location modality rollups)
+    # ======================
+    modality_totals = {}
+
+    for r in reports:
+        for m in r.mtd.modalities:
+            entry = modality_totals.setdefault(
+                m.modality,
+                {"completed": 0, "prev": 0},
+            )
+            entry["completed"] += m.completed_exams
+            entry["prev"] += m.prev_year_exams
+
+    modality_rows = []
+    for modality, vals in modality_totals.items():
+        completed = vals["completed"]
+        prev = vals["prev"]
+        delta = completed - prev
+        pct = delta / prev if prev > 0 else None
+
+        if pct is None:
+            status = Status.INFO
+        elif pct >= 0.05:
+            status = Status.GREEN
+        elif pct <= -0.05:
+            status = Status.RED
+        else:
+            status = Status.YELLOW
+
+        modality_rows.append(
+            {
+                "modality": modality,
+                "completed": completed,
+                "prev": prev,
+                "delta": delta,
+                "pct": pct,
+                "status": status,
+            }
+        )
+
+    # Worst → Best by Δ %
+    modality_rows.sort(
+        key=lambda x: (x["pct"] is None, x["pct"]),
+    )
+
+    mod_data = [["Modality", "MTD Exams", "MTD Prev", "Δ", "Δ %", "Status"]]
+
+    for row in modality_rows:
+        mod_data.append(
+            [
+                row["modality"],
+                fmt_number(row["completed"]),
+                fmt_number(row["prev"]),
+                fmt_number(row["delta"]),
+                fmt_percent(row["pct"]),
+                "●",
+            ]
+        )
+
+    mod_tbl = Table(
+        mod_data,
+        colWidths=[
+            2.0 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.1 * inch,
+            1.1 * inch,
+            0.6 * inch,
+        ],
+        repeatRows=1,
+    )
+
+    mod_style = TableStyle(
+        [
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("ALIGN", (1, 1), (-2, -1), "CENTER"),
+            ("ALIGN", (-1, 1), (-1, -1), "CENTER"),
+            ("FONT", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ]
+    )
+
+    STATUS_COL = 5
+    for idx, row in enumerate(modality_rows, start=1):
+        mod_style.add(
+            "BACKGROUND",
+            (STATUS_COL, idx),
+            (STATUS_COL, idx),
+            STATUS_THEME[row["status"].value].fill_color,
+        )
+
+    mod_tbl.setStyle(mod_style)
+    elements.append(mod_tbl)
+
+    # ======================
+    # FOOTER LEGEND (UNCHANGED, BELOW ALL TABLES)
     # ======================
     elements.append(Spacer(1, 14))
     footer_style = ParagraphStyle(

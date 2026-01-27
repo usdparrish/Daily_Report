@@ -10,6 +10,12 @@ python -m radiology_reports.capacity_reporting.cli --dos 2026-01-12 --email
 # Ops (new)
 python -m radiology_reports.capacity_reporting.cli --dos 2026-01-12 --email --audience ops
 
+python -m radiology_reports.capacity_reporting.ops.cli --dos 2026-01-16 > tests/golden/ops_email.txt
+python -m radiology_reports.capacity_reporting.ops.cli --dos 2026-01-16 --email --to "person1@rrc.center,person2@rrc.center"
+
+python scripts/verify_capacity_outputs.py
+
+
 git add .
 git commit -m "comment"
 git push origin master
