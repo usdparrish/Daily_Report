@@ -24,4 +24,3 @@ def send_ops_capacity_email(
         recipients=recipients,
         config=config,
     )
-
