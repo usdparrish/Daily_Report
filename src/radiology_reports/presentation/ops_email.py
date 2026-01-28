@@ -1,3 +1,6 @@
+# src/radiology_reports/presentation/ops_email.py
+
+from radiology_reports.utils.config import config
 from radiology_reports.utils.email_sender import send_email
 
 
@@ -19,4 +22,6 @@ def send_ops_capacity_email(
         subject=OPS_EMAIL_SUBJECT,
         body=report_text,
         recipients=recipients,
+        config=config,
     )
+
